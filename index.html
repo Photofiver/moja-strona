@@ -56,29 +56,79 @@
 <body>
     <div class="container">
         <h1>Koszulki z Nadrukami</h1>
-        <p>Witaj na mojej stronie! Tworzę unikalne koszulki z nadrukami na zamówienie. Wybierz swoje preferencje poniżej i stwórz swoją wyjątkową koszulkę.</p>
-        <form>
-            <label for="size">Wybierz rozmiar koszulki:</label>
-            <select id="size" name="size">
-                <option value="S">S</option>
-                <option value="M">M</option>
-                <option value="L">L</option>
-                <option value="XL">XL</option>
+        <p>Witaj na mojej stronie! Tworzę unikalne koszulki, bluzy i naklejki z nadrukami na zamówienie. Wybierz swoje preferencje poniżej i stwórz swój wyjątkowy produkt.</p>
+        <label for="language">Wybierz język:</label>
+        <select id="language" name="language" onchange="changeLanguage()">
+            <option value="pl">Polski</option>
+            <option value="en">English</option>
+            <option value="it">Italiano</option>
+        </select>
+        <form id="orderForm">
+            <label for="productType">Wybierz rodzaj produktu:</label>
+            <select id="productType" name="productType" onchange="updateForm()">
+                <option value="shirt">Koszulka</option>
+                <option value="hoodie">Bluza</option>
+                <option value="sticker">Naklejka</option>
             </select>
 
-            <label for="color">Wybierz kolor koszulki:</label>
-            <select id="color" name="color">
-                <option value="white">Biały</option>
-                <option value="black">Czarny</option>
-                <option value="red">Czerwony</option>
-                <option value="blue">Niebieski</option>
-            </select>
+            <div id="shirtOptions">
+                <label for="size">Wybierz rozmiar koszulki:</label>
+                <select id="size" name="size">
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                </select>
 
-            <label for="material">Wybierz materiał koszulki:</label>
-            <select id="material" name="material">
-                <option value="cotton">Bawełna</option>
-                <option value="polyester">Poliester</option>
-            </select>
+                <label for="color">Wybierz kolor koszulki:</label>
+                <select id="color" name="color">
+                    <option value="white">Biały</option>
+                    <option value="black">Czarny</option>
+                    <option value="red">Czerwony</option>
+                    <option value="blue">Niebieski</option>
+                </select>
+
+                <label for="material">Wybierz materiał koszulki:</label>
+                <select id="material" name="material">
+                    <option value="cotton">Bawełna</option>
+                    <option value="polyester">Poliester</option>
+                </select>
+            </div>
+
+            <div id="hoodieOptions" style="display:none;">
+                <label for="hoodieSize">Wybierz rozmiar bluzy:</label>
+                <select id="hoodieSize" name="hoodieSize">
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                </select>
+
+                <label for="hoodieColor">Wybierz kolor bluzy:</label>
+                <select id="hoodieColor" name="hoodieColor">
+                    <option value="white">Biały</option>
+                    <option value="black">Czarny</option>
+                    <option value="red">Czerwony</option>
+                    <option value="blue">Niebieski</option>
+                </select>
+
+                <label for="hoodieMaterial">Wybierz materiał bluzy:</label>
+                <select id="hoodieMaterial" name="hoodieMaterial">
+                    <option value="cotton">Bawełna</option>
+                    <option value="polyester">Poliester</option>
+                </select>
+            </div>
+
+            <div id="stickerOptions" style="display:none;">
+                <label for="stickerSize">Wybierz rozmiar naklejki:</label>
+                <select id="stickerSize" name="stickerSize">
+                    <option value="5x5">Mała (5x5 cm)</option>
+                    <option value="10x10">Średnia (10x10 cm)</option>
+                    <option value="15x15">Duża (15x15 cm)</option>
+                </select>
+                <label for="customSize">Wpisz rozmiar (jeśli inny):</label>
+                <input type="text" id="customSize" name="customSize" placeholder="np. 20x20 cm">
+            </div>
 
             <label for="design">Czy masz własny projekt? Jeśli tak, wklej swój obrazek poniżej:</label>
             <input type="file" id="design" name="design">
@@ -92,5 +142,28 @@
             <p>Masz pytania? Skontaktuj się ze mną: kontakt@example.com</p>
         </div>
     </div>
-</body>
-</html>
+
+    <script>
+        function changeLanguage() {
+            const lang = document.getElementById('language').value;
+            if (lang === 'en') {
+                document.title = "Custom T-shirts, Hoodies, and Stickers";
+                document.querySelector('h1').innerText = "Custom T-shirts, Hoodies, and Stickers";
+                document.querySelector('p').innerText = "Welcome to my site! I create unique custom t-shirts, hoodies, and stickers on demand. Choose your preferences below and create your unique product.";
+                document.querySelector('label[for="productType"]').innerText = "Choose product type:";
+                document.querySelector('label[for="size"]').innerText = "Choose t-shirt size:";
+                document.querySelector('label[for="color"]').innerText = "Choose t-shirt color:";
+                document.querySelector('label[for="material"]').innerText = "Choose t-shirt material:";
+                document.querySelector('label[for="hoodieSize"]').innerText = "Choose hoodie size:";
+                document.querySelector('label[for="hoodieColor"]').innerText = "Choose hoodie color:";
+                document.querySelector('label[for="hoodieMaterial"]').innerText = "Choose hoodie material:";
+                document.querySelector('label[for="stickerSize"]').innerText = "Choose sticker size:";
+                document.querySelector('label[for="customSize"]').innerText = "Enter size (if different):";
+                document.querySelector('label[for="design"]').innerText = "Do you have your own design? If yes, upload your image below:";
+                document.querySelector('label[for="description"]').innerText = "If you don't have a design, describe your idea below:";
+                document.querySelector('button').innerText = "Submit order";
+                document.querySelector('.contact p').innerText = "Have questions? Contact me at: kontakt@example.com";
+            } else if (lang === 'it') {
+                document.title = "Magliette, Felpe e Adesivi Personalizzati";
+                document.querySelector('
+    
