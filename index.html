@@ -56,13 +56,23 @@
             font-size: 14px;
             color: #555;
         }
+        .thank-you-message {
+            display: none;
+            text-align: center;
+            font-size: 18px;
+            color: green;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Koszulki z Nadrukami</h1>
         <p>Witaj na mojej stronie! Tworzę unikalne koszulki i bluzy z nadrukami na zamówienie. Wybierz swoje preferencje poniżej i stwórz swój wyjątkowy produkt.</p>
-        <form action="https://formsubmit.co/photofiver2023@gmail.com" method="POST" enctype="multipart/form-data">
+        <form id="orderForm" action="https://formsubmit.co/photofiver2023@gmail.com" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="_captcha" value="false">
+            <input type="hidden" name="_next" value="https://photofiver.github.io/moja-strona/thankyou.html">
+            
             <label for="productType">Wybierz rodzaj produktu:</label>
             <select id="productType" name="productType" onchange="updateForm()">
                 <option value="shirt">Koszulka</option>
@@ -128,6 +138,9 @@
         <div class="privacy">
             <p><strong>Prywatność:</strong> Twoje dane przesłane przez ten formularz są bezpieczne i będą widoczne tylko dla nas. Nie przechowujemy ani nie udostępniamy Twoich danych osobom trzecim. Przesyłane informacje są bezpośrednio przekazywane na nasz adres e-mail i są używane wyłącznie do celów związanych z realizacją Twojego zamówienia.</p>
         </div>
+        <div class="thank-you-message" id="thankYouMessage">
+            <p>Dziękuję za złożenie zamówienia, skontaktuję się z Tobą jak najszybciej. Miłego dnia!</p>
+        </div>
     </div>
 
     <script>
@@ -141,6 +154,28 @@
                 document.getElementById('hoodieOptions').style.display = 'block';
             }
         }
+
+        document.getElementById('orderForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const form = event.target;
+
+            fetch(form.action, {
+                method: form.method,
+                body: new FormData(form),
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    document.getElementById('thankYouMessage').style.display = 'block';
+                    form.reset();
+                } else {
+                    alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
+                }
+            }).catch(error => {
+                alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
+            });
+        });
     </script>
 </body>
 </html>
