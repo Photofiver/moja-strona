@@ -30,7 +30,7 @@
             margin-top: 10px;
             font-weight: bold;
         }
-        select, input[type="file"], input[type="number"], textarea {
+        select, input[type="file"], input[type="number"], input[type="text"], textarea {
             margin-top: 5px;
             padding: 10px;
             font-size: 16px;
@@ -51,13 +51,18 @@
             margin-top: 20px;
             text-align: center;
         }
+        .privacy {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Koszulki z Nadrukami</h1>
         <p>Witaj na mojej stronie! Tworzę unikalne koszulki i bluzy z nadrukami na zamówienie. Wybierz swoje preferencje poniżej i stwórz swój wyjątkowy produkt.</p>
-        <form id="orderForm">
+        <form action="https://formsubmit.co/photofiver2023@gmail.com" method="POST" enctype="multipart/form-data">
             <label for="productType">Wybierz rodzaj produktu:</label>
             <select id="productType" name="productType" onchange="updateForm()">
                 <option value="shirt">Koszulka</option>
@@ -106,6 +111,9 @@
                 </select>
             </div>
 
+            <label for="contactInfo">Podaj swój e-mail, numer telefonu lub nazwę na Facebooku, abyśmy mogli się z Tobą skontaktować:</label>
+            <input type="text" id="contactInfo" name="contactInfo" placeholder="E-mail, numer telefonu lub nazwa na Facebooku">
+
             <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
             <input type="file" id="design" name="design" multiple>
 
@@ -116,6 +124,9 @@
         </form>
         <div class="contact">
             <p>Masz pytania? Skontaktuj się ze mną: kontakt@example.com</p>
+        </div>
+        <div class="privacy">
+            <p><strong>Prywatność:</strong> Twoje dane przesłane przez ten formularz są bezpieczne i będą widoczne tylko dla nas. Nie przechowujemy ani nie udostępniamy Twoich danych osobom trzecim. Przesyłane informacje są bezpośrednio przekazywane na nasz adres e-mail i są używane wyłącznie do celów związanych z realizacją Twojego zamówienia.</p>
         </div>
     </div>
 
@@ -130,40 +141,6 @@
                 document.getElementById('hoodieOptions').style.display = 'block';
             }
         }
-
-        document.getElementById('orderForm').addEventListener('submit', async function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-            const data = {};
-            formData.forEach((value, key) => {
-                if (data[key]) {
-                    if (!Array.isArray(data[key])) {
-                        data[key] = [data[key]];
-                    }
-                    data[key].push(value);
-                } else {
-                    data[key] = value;
-                }
-            });
-
-            try {
-                const response = await fetch('https://YOUR_DETA_MICRO_URL/api/data', { // Zastąp "YOUR_DETA_MICRO_URL" adresem Twojego Deta Micro
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    alert('Dziękuję, odezwę się do Ciebie jak najszybciej. Miłego dnia!');
-                } else {
-                    alert('Wystąpił błąd podczas wysyłania danych');
-                }
-            } catch (error) {
-                alert('Wystąpił błąd podczas wysyłania danych');
-            }
-        });
     </script>
 </body>
 </html>
