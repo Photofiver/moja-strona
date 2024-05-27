@@ -65,21 +65,23 @@
             </select>
 
             <div id="shirtOptions">
-                <label for="size">Wybierz rozmiar koszulki:</label>
-                <select id="size" name="size">
-                    <option value="S">S</option>
-                    <option value="M">M</option>
-                    <option value="L">L</option>
-                    <option value="XL">XL</option>
-                </select>
-
-                <label for="color">Wybierz kolor koszulki:</label>
-                <select id="color" name="color">
-                    <option value="white">Biały</option>
-                    <option value="black">Czarny</option>
-                    <option value="red">Czerwony</option>
-                    <option value="blue">Niebieski</option>
-                </select>
+                <label for="sizes">Wybierz rozmiary koszulek i ilości:</label>
+                <div>
+                    <label for="sizeS">S:</label>
+                    <input type="number" id="sizeS" name="sizeS" min="0" placeholder="0">
+                </div>
+                <div>
+                    <label for="sizeM">M:</label>
+                    <input type="number" id="sizeM" name="sizeM" min="0" placeholder="0">
+                </div>
+                <div>
+                    <label for="sizeL">L:</label>
+                    <input type="number" id="sizeL" name="sizeL" min="0" placeholder="0">
+                </div>
+                <div>
+                    <label for="sizeXL">XL:</label>
+                    <input type="number" id="sizeXL" name="sizeXL" min="0" placeholder="0">
+                </div>
 
                 <label for="material">Wybierz materiał koszulki:</label>
                 <select id="material" name="material">
@@ -97,23 +99,12 @@
                     <option value="XL">XL</option>
                 </select>
 
-                <label for="hoodieColor">Wybierz kolor bluzy:</label>
-                <select id="hoodieColor" name="hoodieColor">
-                    <option value="white">Biały</option>
-                    <option value="black">Czarny</option>
-                    <option value="red">Czerwony</option>
-                    <option value="blue">Niebieski</option>
-                </select>
-
                 <label for="hoodieMaterial">Wybierz materiał bluzy:</label>
                 <select id="hoodieMaterial" name="hoodieMaterial">
                     <option value="cotton">Bawełna</option>
                     <option value="polyester">Poliester</option>
                 </select>
             </div>
-
-            <label for="quantity">Ilość:</label>
-            <input type="number" id="quantity" name="quantity" min="1" placeholder="Podaj ilość">
 
             <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
             <input type="file" id="design" name="design" multiple>
