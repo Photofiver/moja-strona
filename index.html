@@ -142,6 +142,14 @@
                 ordersContainer.appendChild(orderDiv);
             });
         }
+
+        window.addEventListener('DOMContentLoaded', (event) => {
+            if (localStorage.getItem('orders')) {
+                console.log('Zamówienia:', JSON.parse(localStorage.getItem('orders')));
+            } else {
+                console.log('Brak zamówień w LocalStorage.');
+            }
+        });
     </script>
 </head>
 <body>
