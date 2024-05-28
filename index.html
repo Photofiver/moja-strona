@@ -72,6 +72,9 @@
         <label for="ideas">Opisz swoje pomysły na nadruk:</label>
         <textarea id="ideas" name="ideas" placeholder="Opisz swoje pomysły..."></textarea>
 
+        <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
+        <input type="file" id="design" name="design" multiple>
+
         <button type="submit">Wyślij zamówienie</button>
     </form>
 
@@ -96,11 +99,36 @@
             const sizeXL = document.getElementById('sizeXL').value;
             const contact = document.getElementById('contact').value;
             const ideas = document.getElementById('ideas').value;
+            const files = document.getElementById('design').files;
+            const fileArray = [];
 
-            storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas);
+            if (files.length > 0) {
+                let filesProcessed = 0;
+                console.log('Przetwarzanie plików...');
+
+                for (let i = 0; i < files.length; i++) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        fileArray.push({
+                            name: files[i].name,
+                            content: event.target.result
+                        });
+
+                        filesProcessed++;
+                        if (filesProcessed === files.length) {
+                            console.log('Wszystkie pliki przetworzone.');
+                            storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, fileArray);
+                        }
+                    };
+                    reader.readAsDataURL(files[i]);
+                }
+            } else {
+                console.log('Brak plików do przetworzenia.');
+                storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, fileArray);
+            }
         }
 
-        function storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas) {
+        function storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, files) {
             console.log('Przechowywanie zamówienia');
             const order = {
                 sizeS,
@@ -109,6 +137,7 @@
                 sizeXL,
                 contact,
                 ideas,
+                files,
                 timestamp: new Date().toLocaleString()
             };
 
@@ -136,7 +165,7 @@
             const ordersContainer = document.getElementById('ordersContainer');
             ordersContainer.innerHTML = '';
 
-            orders.forEach(order => {
+            orders.forEach((order, index) => {
                 const orderDiv = document.createElement('div');
                 orderDiv.className = 'order';
                 orderDiv.innerHTML = `
@@ -147,9 +176,18 @@
                     <p>Kontakt: ${order.contact}</p>
                     <p>Pomysły: ${order.ideas}</p>
                     <p>Złożono: ${order.timestamp}</p>
+                    ${order.files.map(file => `<p><a href="${file.content}" download="${file.name}">${file.name}</a></p>`).join('')}
+                    <button onclick="deleteOrder(${index})">Usuń zamówienie</button>
                 `;
                 ordersContainer.appendChild(orderDiv);
             });
+        }
+
+        function deleteOrder(index) {
+            const orders = JSON.parse(localStorage.getItem('orders')) || [];
+            orders.splice(index, 1);
+            localStorage.setItem('orders', JSON.stringify(orders));
+            displayOrders();
         }
 
         window.addEventListener('DOMContentLoaded', () => {
