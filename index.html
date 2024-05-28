@@ -53,12 +53,7 @@
 <body>
     <h1>Koszulki z Nadrukami</h1>
     <form id="orderForm" onsubmit="saveOrder(event)">
-        <label for="productType">Wybierz rodzaj produktu:</label>
-        <select id="productType" name="productType">
-            <option value="Koszulka">Koszulka</option>
-            <option value="Bluza">Bluza</option>
-        </select>
-
+        <!-- Formularz dla koszulek -->
         <label for="sizeS">Rozmiar S:</label>
         <input type="number" id="sizeS" name="sizeS" min="0" value="0">
         
@@ -71,20 +66,11 @@
         <label for="sizeXL">Rozmiar XL:</label>
         <input type="number" id="sizeXL" name="sizeXL" min="0" value="0">
 
-        <label for="material">Wybierz materiał koszulki:</label>
-        <select id="material" name="material">
-            <option value="Bawełna">Bawełna</option>
-            <option value="Poliester">Poliester</option>
-        </select>
-
         <label for="contact">Podaj swój e-mail, numer telefonu lub nazwę na Facebooku, abyśmy mogli się z Tobą skontaktować:</label>
         <input type="text" id="contact" name="contact" placeholder="E-mail, numer telefonu lub nazwa na Facebooku" required>
 
-        <label for="ideas">Jeśli nie masz projektu, opisz swoje pomysły poniżej (możesz dodać kilka pomysłów):</label>
+        <label for="ideas">Opisz swoje pomysły na nadruk:</label>
         <textarea id="ideas" name="ideas" placeholder="Opisz swoje pomysły..."></textarea>
-
-        <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
-        <input type="file" id="design" name="design" multiple>
 
         <button type="submit">Wyślij zamówienie</button>
     </form>
@@ -104,55 +90,25 @@
             event.preventDefault();
             console.log('Formularz przesłany');
 
-            const productType = document.getElementById('productType').value;
             const sizeS = document.getElementById('sizeS').value;
             const sizeM = document.getElementById('sizeM').value;
             const sizeL = document.getElementById('sizeL').value;
             const sizeXL = document.getElementById('sizeXL').value;
-            const material = document.getElementById('material').value;
             const contact = document.getElementById('contact').value;
             const ideas = document.getElementById('ideas').value;
-            const files = document.getElementById('design').files;
-            const fileArray = [];
 
-            if (files.length > 0) {
-                let filesProcessed = 0;
-                console.log('Przetwarzanie plików...');
-
-                for (let i = 0; i < files.length; i++) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        fileArray.push({
-                            name: files[i].name,
-                            content: event.target.result
-                        });
-
-                        filesProcessed++;
-                        if (filesProcessed === files.length) {
-                            console.log('Wszystkie pliki przetworzone.');
-                            storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, fileArray);
-                        }
-                    };
-                    reader.readAsDataURL(files[i]);
-                }
-            } else {
-                console.log('Brak plików do przetworzenia.');
-                storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, fileArray);
-            }
+            storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas);
         }
 
-        function storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, files) {
+        function storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas) {
             console.log('Przechowywanie zamówienia');
             const order = {
-                productType,
                 sizeS,
                 sizeM,
                 sizeL,
                 sizeXL,
-                material,
                 contact,
                 ideas,
-                files,
                 timestamp: new Date().toLocaleString()
             };
 
@@ -166,7 +122,7 @@
 
         function showAdminSection() {
             const password = prompt('Podaj hasło dostępu:');
-            if (password === 'admin123') { // Ustaw hasło dostępu tutaj
+            if (password === 'admin123') {
                 document.querySelector('.admin-section').classList.add('visible');
                 displayOrders();
             } else {
@@ -184,16 +140,13 @@
                 const orderDiv = document.createElement('div');
                 orderDiv.className = 'order';
                 orderDiv.innerHTML = `
-                    <p>Rodzaj produktu: ${order.productType}</p>
                     <p>Rozmiar S: ${order.sizeS}</p>
                     <p>Rozmiar M: ${order.sizeM}</p>
                     <p>Rozmiar L: ${order.sizeL}</p>
                     <p>Rozmiar XL: ${order.sizeXL}</p>
-                    <p>Materiał: ${order.material}</p>
                     <p>Kontakt: ${order.contact}</p>
                     <p>Pomysły: ${order.ideas}</p>
                     <p>Złożono: ${order.timestamp}</p>
-                    ${order.files.map(file => `<p><a href="${file.content}" download="${file.name}">${file.name}</a></p>`).join('')}
                 `;
                 ordersContainer.appendChild(orderDiv);
             });
