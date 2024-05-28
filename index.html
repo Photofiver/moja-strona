@@ -102,6 +102,7 @@
     <script>
         function saveOrder(event) {
             event.preventDefault();
+            console.log('Formularz przesłany');
 
             const productType = document.getElementById('productType').value;
             const sizeS = document.getElementById('sizeS').value;
@@ -116,6 +117,7 @@
 
             if (files.length > 0) {
                 let filesProcessed = 0;
+                console.log('Przetwarzanie plików...');
 
                 for (let i = 0; i < files.length; i++) {
                     const reader = new FileReader();
@@ -127,17 +129,20 @@
 
                         filesProcessed++;
                         if (filesProcessed === files.length) {
+                            console.log('Wszystkie pliki przetworzone.');
                             storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, fileArray);
                         }
                     };
                     reader.readAsDataURL(files[i]);
                 }
             } else {
+                console.log('Brak plików do przetworzenia.');
                 storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, fileArray);
             }
         }
 
         function storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, files) {
+            console.log('Przechowywanie zamówienia');
             const order = {
                 productType,
                 sizeS,
@@ -170,6 +175,7 @@
         }
 
         function displayOrders() {
+            console.log('Wyświetlanie zamówień');
             const orders = JSON.parse(localStorage.getItem('orders')) || [];
             const ordersContainer = document.getElementById('ordersContainer');
             ordersContainer.innerHTML = '';
@@ -192,6 +198,10 @@
                 ordersContainer.appendChild(orderDiv);
             });
         }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Strona załadowana');
+        });
     </script>
 </body>
 </html>
