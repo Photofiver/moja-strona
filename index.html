@@ -72,8 +72,8 @@
         <label for="ideas">Opisz swoje pomysły na nadruk:</label>
         <textarea id="ideas" name="ideas" placeholder="Opisz swoje pomysły..."></textarea>
 
-        <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
-        <input type="file" id="design" name="design" multiple>
+        <label for="questions">Pytania:</label>
+        <textarea id="questions" name="questions" placeholder="Zadaj swoje pytania..."></textarea>
 
         <button type="submit">Wyślij zamówienie</button>
     </form>
@@ -99,40 +99,12 @@
             const sizeXL = document.getElementById('sizeXL').value;
             const contact = document.getElementById('contact').value;
             const ideas = document.getElementById('ideas').value;
-            const files = document.getElementById('design').files;
-            const fileArray = [];
+            const questions = document.getElementById('questions').value;
 
-            if (files.length > 0) {
-                let filesProcessed = 0;
-                console.log('Przetwarzanie plików...');
-
-                for (let i = 0; i < files.length; i++) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        fileArray.push({
-                            name: files[i].name,
-                            content: event.target.result
-                        });
-
-                        filesProcessed++;
-                        if (filesProcessed === files.length) {
-                            console.log('Wszystkie pliki przetworzone.');
-                            storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, fileArray);
-                        }
-                    };
-                    reader.onerror = function(event) {
-                        console.error("Błąd odczytu pliku: ", event);
-                        alert("Wystąpił błąd podczas odczytu pliku.");
-                    };
-                    reader.readAsDataURL(files[i]);
-                }
-            } else {
-                console.log('Brak plików do przetworzenia.');
-                storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, fileArray);
-            }
+            storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, questions);
         }
 
-        function storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, files) {
+        function storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, questions) {
             console.log('Przechowywanie zamówienia');
             const order = {
                 sizeS,
@@ -141,7 +113,7 @@
                 sizeXL,
                 contact,
                 ideas,
-                files,
+                questions,
                 timestamp: new Date().toLocaleString()
             };
 
@@ -179,8 +151,8 @@
                     <p>Rozmiar XL: ${order.sizeXL}</p>
                     <p>Kontakt: ${order.contact}</p>
                     <p>Pomysły: ${order.ideas}</p>
+                    <p>Pytania: ${order.questions}</p>
                     <p>Złożono: ${order.timestamp}</p>
-                    ${order.files.map(file => `<p><a href="${file.content}" download="${file.name}">${file.name}</a></p>`).join('')}
                     <button onclick="deleteOrder(${index})">Usuń zamówienie</button>
                 `;
                 ordersContainer.appendChild(orderDiv);
