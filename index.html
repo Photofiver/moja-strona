@@ -22,24 +22,121 @@
             padding: 8px;
             margin-bottom: 10px;
         }
-        input[type="submit"] {
+        button {
             background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
+            padding: 10px 20px;
+            font-size: 16px;
         }
-        input[type="submit"]:hover {
+        button:hover {
             background-color: #45a049;
         }
         .privacy {
             font-size: 12px;
             color: gray;
         }
+        .admin-section {
+            display: none;
+        }
+        .admin-section.visible {
+            display: block;
+        }
+        .order {
+            border: 1px solid #ccc;
+            margin: 10px 0;
+            padding: 10px;
+        }
     </style>
+    <script>
+        function saveOrder(event) {
+            event.preventDefault();
+            
+            const productType = document.getElementById('productType').value;
+            const sizeS = document.getElementById('sizeS').value;
+            const sizeM = document.getElementById('sizeM').value;
+            const sizeL = document.getElementById('sizeL').value;
+            const sizeXL = document.getElementById('sizeXL').value;
+            const material = document.getElementById('material').value;
+            const contact = document.getElementById('contact').value;
+            const ideas = document.getElementById('ideas').value;
+
+            const order = {
+                productType,
+                sizeS,
+                sizeM,
+                sizeL,
+                sizeXL,
+                material,
+                contact,
+                ideas,
+                timestamp: new Date().toLocaleString()
+            };
+
+            const orders = JSON.parse(localStorage.getItem('orders')) || [];
+            orders.push(order);
+            localStorage.setItem('orders', JSON.stringify(orders));
+
+            alert('Dziękujemy za złożenie zamówienia! Skontaktujemy się z Tobą jak najszybciej.');
+            document.getElementById('orderForm').reset();
+        }
+
+        function showAdminSection() {
+            const password = prompt('Podaj hasło dostępu:');
+            if (password === 'admin123') { // Ustaw hasło dostępu tutaj
+                document.querySelector('.admin-section').classList.add('visible');
+                displayOrders();
+            } else {
+                alert('Nieprawidłowe hasło!');
+            }
+        }
+
+        function displayOrders() {
+            const orders = JSON.parse(localStorage.getItem('orders')) || [];
+            const ordersContainer = document.getElementById('ordersContainer');
+            ordersContainer.innerHTML = '';
+
+            orders.forEach(order => {
+                const orderDiv = document.createElement('div');
+                orderDiv.className = 'order';
+                orderDiv.innerHTML = `
+                    <p>Rodzaj produktu: ${order.productType}</p>
+                    <p>Rozmiar S: ${order.sizeS}</p>
+                    <p>Rozmiar M: ${order.sizeM}</p>
+                    <p>Rozmiar L: ${order.sizeL}</p>
+                    <p>Rozmiar XL: ${order.sizeXL}</p>
+                    <p>Materiał: ${order.material}</p>
+                    <p>Kontakt: ${order.contact}</p>
+                    <p>Pomysły: ${order.ideas}</p>
+                    <p>Złożono: ${order.timestamp}</p>
+                `;
+                ordersContainer.appendChild(orderDiv);
+            });
+        }
+    </script>
 </head>
 <body>
     <h1>Koszulki z Nadrukami</h1>
-    <form id="orderForm">
+    <form id="orderForm" onsubmit="saveOrder(event)">
+        <label for="productType">Wybierz rodzaj produktu:</label>
+        <select id="productType" name="productType">
+            <option value="Koszulka">Koszulka</option>
+            <option value="Bluza">Bluza</option>
+        </select>
+
+        <label for="sizeS">Rozmiar S:</label>
+        <input type="number" id="sizeS" name="sizeS" min="0" value="0">
+        
+        <label for="sizeM">Rozmiar M:</label>
+        <input type="number" id="sizeM" name="sizeM" min="0" value="0">
+        
+        <label for="sizeL">Rozmiar L:</label>
+        <input type="number" id="sizeL" name="sizeL" min="0" value="0">
+        
+        <label for="sizeXL">Rozmiar XL:</label>
+        <input type="number" id="sizeXL" name="sizeXL" min="0" value="0">
+
         <label for="material">Wybierz materiał koszulki:</label>
         <select id="material" name="material">
             <option value="Bawełna">Bawełna</option>
@@ -49,41 +146,20 @@
         <label for="contact">Podaj swój e-mail, numer telefonu lub nazwę na Facebooku, abyśmy mogli się z Tobą skontaktować:</label>
         <input type="text" id="contact" name="contact" placeholder="E-mail, numer telefonu lub nazwa na Facebooku" required>
 
-        <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
-        <input type="file" id="design" name="design" multiple>
-
         <label for="ideas">Jeśli nie masz projektu, opisz swoje pomysły poniżej (możesz dodać kilka pomysłów):</label>
         <textarea id="ideas" name="ideas" placeholder="Opisz swoje pomysły..."></textarea>
 
-        <input type="submit" value="Wyślij zamówienie">
+        <button type="submit">Wyślij zamówienie</button>
     </form>
-    
+
     <p class="privacy">
         Prywatność: Twoje dane przesłane przez ten formularz są bezpieczne i będą widoczne tylko dla nas. Nie przechowujemy ani nie udostępniamy Twoich danych osobom trzecim. Przesyłane informacje są bezpośrednio przekazywane na nasz adres e-mail i są używane wyłącznie do celów związanych z realizacją Twojego zamówienia.
     </p>
 
-    <script>
-        document.getElementById('orderForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-            fetch('https://formsubmit.co/ajax/photofiver2023@gmail.com', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json'
-                }
-            }).then(response => response.json())
-              .then(data => {
-                  if(data.success) {
-                      alert('Dziękujemy za złożenie zamówienia! Skontaktujemy się z Tobą jak najszybciej.');
-                      document.getElementById('orderForm').reset();
-                  } else {
-                      alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
-                  }
-              }).catch(error => {
-                  alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
-              });
-        });
-    </script>
+    <button onclick="showAdminSection()">Zaloguj się jako administrator</button>
+    <div class="admin-section">
+        <h2>Sekcja administracyjna</h2>
+        <div id="ordersContainer"></div>
+    </div>
 </body>
 </html>
