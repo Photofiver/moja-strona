@@ -64,60 +64,49 @@
             const files = document.getElementById('design').files;
             const fileArray = [];
 
-            for (let i = 0; i < files.length; i++) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    fileArray.push({
-                        name: files[i].name,
-                        content: event.target.result
-                    });
+            if (files.length > 0) {
+                let filesProcessed = 0;
 
-                    if (fileArray.length === files.length) {
-                        const order = {
-                            productType,
-                            sizeS,
-                            sizeM,
-                            sizeL,
-                            sizeXL,
-                            material,
-                            contact,
-                            ideas,
-                            files: fileArray,
-                            timestamp: new Date().toLocaleString()
-                        };
+                for (let i = 0; i < files.length; i++) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        fileArray.push({
+                            name: files[i].name,
+                            content: event.target.result
+                        });
 
-                        const orders = JSON.parse(localStorage.getItem('orders')) || [];
-                        orders.push(order);
-                        localStorage.setItem('orders', JSON.stringify(orders));
-
-                        alert('Dziękujemy za złożenie zamówienia! Skontaktujemy się z Tobą jak najszybciej.');
-                        document.getElementById('orderForm').reset();
-                    }
-                };
-                reader.readAsDataURL(files[i]);
+                        filesProcessed++;
+                        if (filesProcessed === files.length) {
+                            storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, fileArray);
+                        }
+                    };
+                    reader.readAsDataURL(files[i]);
+                }
+            } else {
+                storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, fileArray);
             }
+        }
 
-            if (files.length === 0) {
-                const order = {
-                    productType,
-                    sizeS,
-                    sizeM,
-                    sizeL,
-                    sizeXL,
-                    material,
-                    contact,
-                    ideas,
-                    files: fileArray,
-                    timestamp: new Date().toLocaleString()
-                };
+        function storeOrder(productType, sizeS, sizeM, sizeL, sizeXL, material, contact, ideas, files) {
+            const order = {
+                productType,
+                sizeS,
+                sizeM,
+                sizeL,
+                sizeXL,
+                material,
+                contact,
+                ideas,
+                files,
+                timestamp: new Date().toLocaleString()
+            };
 
-                const orders = JSON.parse(localStorage.getItem('orders')) || [];
-                orders.push(order);
-                localStorage.setItem('orders', JSON.stringify(orders));
+            const orders = JSON.parse(localStorage.getItem('orders')) || [];
+            orders.push(order);
+            localStorage.setItem('orders', JSON.stringify(orders));
 
-                alert('Dziękujemy za złożenie zamówienia! Skontaktujemy się z Tobą jak najszybciej.');
-                document.getElementById('orderForm').reset();
-            }
+            alert('Dziękujemy za złożenie zamówienia! Skontaktujemy się z Tobą jak najszybciej.');
+            document.getElementById('orderForm').reset();
         }
 
         function showAdminSection() {
