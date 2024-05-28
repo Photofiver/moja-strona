@@ -8,6 +8,7 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            position: relative;
         }
         form {
             max-width: 600px;
@@ -48,6 +49,16 @@
             margin: 10px 0;
             padding: 10px;
         }
+        .admin-dot {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            background-color: black;
+            border-radius: 50%;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -82,7 +93,8 @@
         Prywatność: Twoje dane przesłane przez ten formularz są bezpieczne i będą widoczne tylko dla nas. Nie przechowujemy ani nie udostępniamy Twoich danych osobom trzecim. Przesyłane informacje są bezpośrednio przekazywane na nasz adres e-mail i są używane wyłącznie do celów związanych z realizacją Twojego zamówienia.
     </p>
 
-    <button onclick="showAdminSection()">Zaloguj się jako administrator</button>
+    <div class="admin-dot" onclick="showAdminSection()"></div>
+
     <div class="admin-section">
         <h2>Sekcja administracyjna</h2>
         <div id="ordersContainer"></div>
