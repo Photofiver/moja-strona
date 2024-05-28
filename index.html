@@ -120,6 +120,10 @@
                             storeOrder(sizeS, sizeM, sizeL, sizeXL, contact, ideas, fileArray);
                         }
                     };
+                    reader.onerror = function(event) {
+                        console.error("Błąd odczytu pliku: ", event);
+                        alert("Wystąpił błąd podczas odczytu pliku.");
+                    };
                     reader.readAsDataURL(files[i]);
                 }
             } else {
