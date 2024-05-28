@@ -7,174 +7,82 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            width: 80%;
-            margin: 0 auto;
-            background: #fff;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
+            margin: 20px;
         }
         form {
-            display: flex;
-            flex-direction: column;
+            max-width: 600px;
+            margin: auto;
         }
         label {
-            margin-top: 10px;
-            font-weight: bold;
+            display: block;
+            margin: 10px 0 5px;
         }
-        select, input[type="file"], input[type="number"], input[type="text"], textarea {
-            margin-top: 5px;
-            padding: 10px;
-            font-size: 16px;
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
         }
-        button {
-            margin-top: 20px;
-            padding: 15px;
-            font-size: 18px;
-            background-color: #5cb85c;
+        input[type="submit"] {
+            background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
         }
-        button:hover {
-            background-color: #4cae4c;
-        }
-        .contact {
-            margin-top: 20px;
-            text-align: center;
+        input[type="submit"]:hover {
+            background-color: #45a049;
         }
         .privacy {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #555;
-        }
-        .thank-you-message {
-            display: none;
-            text-align: center;
-            font-size: 18px;
-            color: green;
-            margin-top: 20px;
+            font-size: 12px;
+            color: gray;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Koszulki z Nadrukami</h1>
-        <p>Witaj na mojej stronie! Tworzę unikalne koszulki i bluzy z nadrukami na zamówienie. Wybierz swoje preferencje poniżej i stwórz swój wyjątkowy produkt.</p>
-        <form id="orderForm" action="https://formspree.io/f/mqkgnjkp" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="_captcha" value="false">
-            <input type="hidden" name="_next" value="https://photofiver.github.io/moja-strona/thankyou.html">
-            
-            <label for="productType">Wybierz rodzaj produktu:</label>
-            <select id="productType" name="productType" onchange="updateForm()">
-                <option value="shirt">Koszulka</option>
-                <option value="hoodie">Bluza</option>
-            </select>
+    <h1>Koszulki z Nadrukami</h1>
+    <form id="orderForm">
+        <label for="material">Wybierz materiał koszulki:</label>
+        <select id="material" name="material">
+            <option value="Bawełna">Bawełna</option>
+            <option value="Poliester">Poliester</option>
+        </select>
 
-            <div id="shirtOptions">
-                <label for="sizes">Wybierz rozmiary koszulek i ilości:</label>
-                <div>
-                    <label for="sizeS">S:</label>
-                    <input type="number" id="sizeS" name="sizeS" min="0" placeholder="0">
-                </div>
-                <div>
-                    <label for="sizeM">M:</label>
-                    <input type="number" id="sizeM" name="sizeM" min="0" placeholder="0">
-                </div>
-                <div>
-                    <label for="sizeL">L:</label>
-                    <input type="number" id="sizeL" name="sizeL" min="0" placeholder="0">
-                </div>
-                <div>
-                    <label for="sizeXL">XL:</label>
-                    <input type="number" id="sizeXL" name="sizeXL" min="0" placeholder="0">
-                </div>
+        <label for="contact">Podaj swój e-mail, numer telefonu lub nazwę na Facebooku, abyśmy mogli się z Tobą skontaktować:</label>
+        <input type="text" id="contact" name="contact" placeholder="E-mail, numer telefonu lub nazwa na Facebooku" required>
 
-                <label for="material">Wybierz materiał koszulki:</label>
-                <select id="material" name="material">
-                    <option value="cotton">Bawełna</option>
-                    <option value="polyester">Poliester</option>
-                </select>
-            </div>
+        <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
+        <input type="file" id="design" name="design" multiple>
 
-            <div id="hoodieOptions" style="display:none;">
-                <label for="hoodieSize">Wybierz rozmiar bluzy:</label>
-                <select id="hoodieSize" name="hoodieSize">
-                    <option value="S">S</option>
-                    <option value="M">M</option>
-                    <option value="L">L</option>
-                    <option value="XL">XL</option>
-                </select>
+        <label for="ideas">Jeśli nie masz projektu, opisz swoje pomysły poniżej (możesz dodać kilka pomysłów):</label>
+        <textarea id="ideas" name="ideas" placeholder="Opisz swoje pomysły..."></textarea>
 
-                <label for="hoodieMaterial">Wybierz materiał bluzy:</label>
-                <select id="hoodieMaterial" name="hoodieMaterial">
-                    <option value="cotton">Bawełna</option>
-                    <option value="polyester">Poliester</option>
-                </select>
-            </div>
-
-            <label for="contactInfo">Podaj swój e-mail, numer telefonu lub nazwę na Facebooku, abyśmy mogli się z Tobą skontaktować:</label>
-            <input type="text" id="contactInfo" name="contactInfo" placeholder="E-mail, numer telefonu lub nazwa na Facebooku">
-
-            <label for="design">Czy masz własny projekt? Jeśli tak, wklej swoje obrazki poniżej (możesz dodać kilka plików):</label>
-            <input type="file" id="design" name="design" multiple>
-
-            <label for="description">Jeśli nie masz projektu, opisz swoje pomysły poniżej (możesz dodać kilka pomysłów):</label>
-            <textarea id="description" name="description" rows="4" placeholder="Opisz swoje pomysły..."></textarea>
-
-            <button type="submit">Wyślij zamówienie</button>
-        </form>
-        <div class="contact">
-            <p>Masz pytania? Skontaktuj się ze mną: photofiver2023@gmail.com</p>
-        </div>
-        <div class="privacy">
-            <p><strong>Prywatność:</strong> Twoje dane przesłane przez ten formularz są bezpieczne i będą widoczne tylko dla nas. Nie przechowujemy ani nie udostępniamy Twoich danych osobom trzecim. Przesyłane informacje są bezpośrednio przekazywane na nasz adres e-mail i są używane wyłącznie do celów związanych z realizacją Twojego zamówienia.</p>
-        </div>
-        <div class="thank-you-message" id="thankYouMessage">
-            <p>Dziękuję za złożenie zamówienia, skontaktuję się z Tobą jak najszybciej. Miłego dnia!</p>
-        </div>
-    </div>
+        <input type="submit" value="Wyślij zamówienie">
+    </form>
+    
+    <p class="privacy">
+        Prywatność: Twoje dane przesłane przez ten formularz są bezpieczne i będą widoczne tylko dla nas. Nie przechowujemy ani nie udostępniamy Twoich danych osobom trzecim. Przesyłane informacje są bezpośrednio przekazywane na nasz adres e-mail i są używane wyłącznie do celów związanych z realizacją Twojego zamówienia.
+    </p>
 
     <script>
-        function updateForm() {
-            const productType = document.getElementById('productType').value;
-            if (productType === 'shirt') {
-                document.getElementById('shirtOptions').style.display = 'block';
-                document.getElementById('hoodieOptions').style.display = 'none';
-            } else {
-                document.getElementById('shirtOptions').style.display = 'none';
-                document.getElementById('hoodieOptions').style.display = 'block';
-            }
-        }
-
         document.getElementById('orderForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            const form = event.target;
-
-            fetch(form.action, {
-                method: form.method,
-                body: new FormData(form),
+            const formData = new FormData(this);
+            fetch('https://formsubmit.co/ajax/photofiver2023@gmail.com', {
+                method: 'POST',
+                body: formData,
                 headers: {
                     'Accept': 'application/json'
                 }
-            }).then(response => {
-                if (response.ok) {
-                    document.getElementById('thankYouMessage').style.display = 'block';
-                    form.reset();
-                } else {
-                    alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
-                }
-            }).catch(error => {
-                alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
-            });
+            }).then(response => response.json())
+              .then(data => {
+                  if(data.success) {
+                      alert('Dziękujemy za złożenie zamówienia! Skontaktujemy się z Tobą jak najszybciej.');
+                      document.getElementById('orderForm').reset();
+                  } else {
+                      alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
+                  }
+              }).catch(error => {
+                  alert('Wystąpił błąd podczas wysyłania danych. Spróbuj ponownie później.');
+              });
         });
     </script>
 </body>
