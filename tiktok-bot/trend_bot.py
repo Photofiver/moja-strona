@@ -102,11 +102,22 @@ def build_script(trend):
     return animal, line, topic
 
 def main():
-    if not TOKEN:
-        raise RuntimeError("Brak sekretu TIKTOK_MS_TOKEN — bot nie będzie udawał prawdziwego popularnego filmu.")
-    trend = asyncio.run(real_tiktok_trend())
-    if trend is None:
-        raise RuntimeError("TikTok nie zwrócił żadnego popularnego filmu.")
+    if os.environ.get("TIKTOK_TEST_MODE") == "1":
+        trend = {
+            "type": "test",
+            "description": "Test: pies komentuje viralowy trend",
+            "views": 0,
+            "likes": 0,
+            "shares": 0,
+            "source_url": "",
+            "source": "TEST — bez pobierania TikToka",
+        }
+    else:
+        if not TOKEN:
+            raise RuntimeError("Brak sekretu TIKTOK_MS_TOKEN — bot nie będzie udawał prawdziwego popularnego filmu.")
+        trend = asyncio.run(real_tiktok_trend())
+        if trend is None:
+            raise RuntimeError("TikTok nie zwrócił żadnego popularnego filmu.")
 
     animal, script, topic = build_script(trend)
     trend["animal"] = animal
