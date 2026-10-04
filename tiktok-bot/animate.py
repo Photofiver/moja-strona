@@ -1,151 +1,152 @@
 #!/usr/bin/env python3
 import audioop
+import io
 import json
 import math
-import os
 import subprocess
+import urllib.request
 import wave
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
-OUT=Path("tiktok-bot/output")
-W,H=720,1280
-FPS=15
+OUT = Path("tiktok-bot/output")
+W, H = 720, 1280
+FPS = 15
 
-def font(size,bold=False):
-    paths=[
-      "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-      "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+# Real photographs released as CC0/Public Domain on Wikimedia Commons.
+ASSETS = {
+    "pies": {
+        "url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Dog-portrait-1367008135LpJ.jpg?width=1400",
+        "source": "https://commons.wikimedia.org/wiki/File:Dog-portrait-1367008135LpJ.jpg",
+        "mouth_x": 0.50, "mouth_y": 0.69, "mouth_w": 0.22, "mouth_h": 0.09,
+    },
+    "kot": {
+        "url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cat_face.jpg?width=1600",
+        "source": "https://commons.wikimedia.org/wiki/File:Cat_face.jpg",
+        "mouth_x": 0.50, "mouth_y": 0.64, "mouth_w": 0.16, "mouth_h": 0.065,
+    },
+}
+
+def font(size, bold=False):
+    paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
     ]
     for p in paths:
         if Path(p).exists():
-            return ImageFont.truetype(p,size)
+            return ImageFont.truetype(p, size)
     return ImageFont.load_default()
 
-def wrap(draw,text,f,maxw):
-    out=[]; cur=""
+def wrap(draw, text, fnt, maxw):
+    lines, cur = [], ""
     for word in text.split():
-        t=(cur+" "+word).strip()
-        if draw.textbbox((0,0),t,font=f)[2] <= maxw:
-            cur=t
+        t = (cur + " " + word).strip()
+        if draw.textbbox((0, 0), t, font=fnt)[2] <= maxw:
+            cur = t
         else:
-            if cur: out.append(cur)
-            cur=word
-    if cur: out.append(cur)
-    return out
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines
 
-def audio_levels(wav_path):
-    with wave.open(str(wav_path),"rb") as w:
-        rate=w.getframerate(); sw=w.getsampwidth(); ch=w.getnchannels(); n=w.getnframes()
-        duration=n/rate
-        levels=[]
-        chunk=max(1,int(rate/FPS))
+def fetch_photo(kind):
+    a = ASSETS[kind]
+    req = urllib.request.Request(a["url"], headers={"User-Agent":"Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=45) as r:
+        data = r.read()
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    return img, a
+
+def cover(img, w, h):
+    ratio=max(w/img.width, h/img.height)
+    nw,nh=int(img.width*ratio),int(img.height*ratio)
+    x=img.resize((nw,nh),Image.Resampling.LANCZOS)
+    left=(nw-w)//2
+    top=(nh-h)//2
+    return x.crop((left,top,left+w,top+h))
+
+def audio_levels(path):
+    with wave.open(str(path),"rb") as w:
+        rate=w.getframerate(); sw=w.getsampwidth()
+        levels=[]; chunk=max(1,int(rate/FPS))
         while True:
             data=w.readframes(chunk)
             if not data: break
-            rms=audioop.rms(data,sw) if data else 0
-            levels.append(rms)
+            levels.append(audioop.rms(data,sw))
+        duration=w.getnframes()/rate
     mx=max(levels) if levels else 1
-    return duration,[v/mx for v in levels]
+    return duration,[x/mx for x in levels]
 
-def draw_cat(d,cx,cy,mouth,blink,bounce):
-    y=cy+bounce
-    fur=(205,150,90); dark=(90,55,35); pink=(245,135,150)
-    d.polygon([(cx-180,y-150),(cx-105,y-315),(cx-35,y-155)],fill=fur)
-    d.polygon([(cx+180,y-150),(cx+105,y-315),(cx+35,y-155)],fill=fur)
-    d.ellipse((cx-205,y-220,cx+205,y+185),fill=fur)
-    # eyes
-    eh=6 if blink else 42
-    d.ellipse((cx-105,y-70-eh//2,cx-45,y-70+eh//2),fill=(20,20,20))
-    d.ellipse((cx+45,y-70-eh//2,cx+105,y-70+eh//2),fill=(20,20,20))
-    d.polygon([(cx,y-15),(cx-18,y+7),(cx+18,y+7)],fill=pink)
-    d.line((cx,y+7,cx,y+35),fill=dark,width=5)
-    mh=18+int(55*mouth)
-    d.ellipse((cx-60,y+30,cx+60,y+30+mh),fill=(65,25,25),outline=dark,width=4)
-    if mouth>.35:
-        d.ellipse((cx-35,y+45,cx+35,y+45+mh//2),fill=pink)
-    # whiskers
-    for off in (-10,15,40):
-        d.line((cx-40,y+off,cx-210,y+off-25),fill=dark,width=3)
-        d.line((cx+40,y+off,cx+210,y+off-25),fill=dark,width=3)
+def make_base(photo):
+    bg=cover(photo,W,H).filter(ImageFilter.GaussianBlur(22))
+    bg=ImageEnhance.Brightness(bg).enhance(0.48)
+    fg=photo.copy()
+    ratio=min((W-80)/fg.width, 810/fg.height)
+    fg=fg.resize((int(fg.width*ratio),int(fg.height*ratio)),Image.Resampling.LANCZOS)
+    return bg,fg
 
-def draw_dog(d,cx,cy,mouth,blink,bounce):
-    y=cy+bounce
-    fur=(170,115,65); dark=(65,38,25); cream=(220,180,125)
-    d.ellipse((cx-215,y-200,cx-80,y+90),fill=dark)
-    d.ellipse((cx+80,y-200,cx+215,y+90),fill=dark)
-    d.ellipse((cx-190,y-220,cx+190,y+190),fill=fur)
-    eh=6 if blink else 42
-    d.ellipse((cx-105,y-70-eh//2,cx-45,y-70+eh//2),fill=(20,20,20))
-    d.ellipse((cx+45,y-70-eh//2,cx+105,y-70+eh//2),fill=(20,20,20))
-    d.ellipse((cx-85,y-10,cx+85,y+105),fill=cream)
-    d.ellipse((cx-30,y-5,cx+30,y+35),fill=(35,25,20))
-    mh=16+int(65*mouth)
-    d.ellipse((cx-65,y+55,cx+65,y+55+mh),fill=(65,25,25),outline=dark,width=4)
-    if mouth>.35:
-        d.ellipse((cx-38,y+72,cx+38,y+72+mh//2),fill=(245,120,130))
+def frame(i, level, trend, photo, asset):
+    bg,fg=make_base(photo)
+    canvas=bg.copy()
+    bob=int(math.sin(i/5)*4)
+    x=(W-fg.width)//2
+    y=250+bob
+    canvas.paste(fg,(x,y))
 
-def frame(i,level,total,trend):
-    img=Image.new("RGB",(W,H),(14,16,26)); d=ImageDraw.Draw(img)
-    # gradient background
-    for y in range(H):
-        d.line((0,y,W,y),fill=(14+int(30*y/H),16+int(8*y/H),26+int(38*y/H)))
-    # header
-    d.rounded_rectangle((35,35,W-35,180),radius=30,fill=(25,29,45),outline=(95,102,140),width=3)
-    d.text((60,60),"TREND Z TIKTOKA → WERSJA AI",font=font(34,True),fill=(255,255,255))
-    src="POPULARNY FILM" if trend.get("type")=="video" else "TREND / HASHTAG"
-    d.text((60,120),src,font=font(25),fill=(205,210,230))
+    d=ImageDraw.Draw(canvas)
+    d.rounded_rectangle((35,30,W-35,160),radius=28,fill=(0,0,0,180))
+    d.text((55,52),"TREND Z TIKTOKA — WERSJA AI",font=font(30,True),fill="white")
+    d.text((55,105),"Prawdziwe zdjęcie zwierzaka • własny głos i tekst",font=font(20),fill=(220,220,220))
 
-    # topic box
-    topic=trend.get("topic","trend")
-    f=font(37,True)
-    lines=wrap(d,topic,f,W-110)[:3]
-    y=225
+    # Real-photo mouth animation. We do not alter or reuse the source TikTok video.
+    fx=x + int(fg.width*asset["mouth_x"])
+    fy=y + int(fg.height*asset["mouth_y"])
+    mw=max(45,int(fg.width*asset["mouth_w"]))
+    base_h=max(10,int(fg.height*asset["mouth_h"]))
+    open_amt=max(0.0,min(1.0,(level-0.035)*2.8))
+    mh=int(base_h*(0.35+1.25*open_amt))
+    if open_amt>0.08:
+        d.ellipse((fx-mw//2,fy-mh//2,fx+mw//2,fy+mh//2),fill=(32,12,15),outline=(55,25,25),width=2)
+        if open_amt>0.42:
+            tw=int(mw*0.55); th=max(6,int(mh*0.32))
+            d.ellipse((fx-tw//2,fy+int(mh*0.08),fx+tw//2,fy+int(mh*0.08)+th),fill=(190,83,94))
+
+    # Subtitles: short 2–3 lines at bottom.
+    txt=trend.get("script","")
+    lines=wrap(d,txt,font(25,True),W-90)[:3]
+    yy=H-55-len(lines)*38
     for line in lines:
-        d.text((55,y),line,font=f,fill=(245,245,250))
-        y+=48
-
-    # animal
-    bounce=int(math.sin(i/4)*8)
-    mouth=min(1,max(0,(level-.04)*2.2))
-    blink=(i%73 in (0,1,2))
-    if trend.get("animal")=="pies":
-        draw_dog(d,W//2,650,mouth,blink,bounce)
-    else:
-        draw_cat(d,W//2,650,mouth,blink,bounce)
-
-    # microphone
-    d.ellipse((W//2-60,900,W//2+60,1020),fill=(55,60,75),outline=(175,180,195),width=5)
-    d.rectangle((W//2-14,1010,W//2+14,1115),fill=(110,115,130))
-    d.rectangle((W//2-90,1110,W//2+90,1132),fill=(110,115,130))
-
-    # captions
-    script=trend.get("script","")
-    small=font(26,True)
-    cap=wrap(d,script,small,W-90)
-    y=1150-len(cap[:3])*34
-    for line in cap[:3]:
-        box=d.textbbox((0,0),line,font=small)
+        box=d.textbbox((0,0),line,font=font(25,True))
         tw=box[2]-box[0]
-        d.rounded_rectangle((W//2-tw//2-12,y-4,W//2+tw//2+12,y+31),radius=8,fill=(0,0,0))
-        d.text((W//2-tw//2,y),line,font=small,fill=(255,255,255))
-        y+=35
-    return img
+        d.rounded_rectangle((W//2-tw//2-12,yy-5,W//2+tw//2+12,yy+31),radius=8,fill="black")
+        d.text((W//2-tw//2,yy),line,font=font(25,True),fill="white")
+        yy+=38
+    return canvas
 
 def main():
     trend=json.loads((OUT/"trend.json").read_text(encoding="utf-8"))
+    kind=trend.get("animal","pies")
+    photo,asset=fetch_photo(kind)
+    trend["animal_photo_source"]=asset["source"]
+    (OUT/"trend.json").write_text(json.dumps(trend,ensure_ascii=False,indent=2),encoding="utf-8")
+
     duration,levels=audio_levels(OUT/"voice.wav")
     frames=OUT/"frames"
     frames.mkdir(exist_ok=True)
-    n=max(1,int(duration*FPS)+FPS)
+    for old in frames.glob("*.jpg"):
+        old.unlink()
+    n=max(1,int(duration*FPS)+5)
     for i in range(n):
-        level=levels[i] if i<len(levels) else 0
-        frame(i,level,n,trend).save(frames/f"{i:05d}.jpg",quality=88)
+        lv=levels[i] if i<len(levels) else 0
+        frame(i,lv,trend,photo,asset).save(frames/f"{i:05d}.jpg",quality=90)
+
     subprocess.run([
-      "ffmpeg","-y","-framerate",str(FPS),"-i",str(frames/"%05d.jpg"),
-      "-i",str(OUT/"voice.mp3"),"-c:v","libx264","-preset","medium","-crf","22",
-      "-pix_fmt","yuv420p","-c:a","aac","-shortest","-movflags","+faststart",
-      str(OUT/"tiktok_ready.mp4")
+        "ffmpeg","-y","-framerate",str(FPS),"-i",str(frames/"%05d.jpg"),
+        "-i",str(OUT/"voice.mp3"),"-c:v","libx264","-preset","medium","-crf","21",
+        "-pix_fmt","yuv420p","-c:a","aac","-shortest","-movflags","+faststart",
+        str(OUT/"tiktok_ready.mp4")
     ],check=True)
 
 if __name__=="__main__":
