@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 15
     env:
       TIKTOK_MS_TOKEN: ${{ secrets.TIKTOK_MS_TOKEN }}
+      TIKTOK_TEST_MODE: "1"
     steps:
       - uses: actions/checkout@v4
 
