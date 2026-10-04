@@ -1,129 +1,132 @@
 #!/usr/bin/env python3
-import asyncio
-import json
-import os
-import re
-import urllib.request
-from datetime import datetime, timezone
+import json, math, time, urllib.parse, urllib.request
 from pathlib import Path
 
-OUT = Path("tiktok-bot/output")
-OUT.mkdir(parents=True, exist_ok=True)
-TOKEN = os.environ.get("TIKTOK_MS_TOKEN", "").strip()
-CREATIVE_URL = "https://ads.tiktok.com/creative/creativeCenter/trends/hashtag?period=7&region=GB"
+OUT=Path("tiktok-bot/output")
+OUT.mkdir(parents=True,exist_ok=True)
+STATE=Path("tiktok-bot/state.json")
+FEED="https://www.tikwm.com/api/feed/list"
+REGION="GB"
+COUNT=20
 
-def clean(s):
-    s = re.sub(r"https?://\S+", "", s or "")
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+def get_json(url):
+    req=urllib.request.Request(url,headers={
+        "User-Agent":"Mozilla/5.0",
+        "Accept":"application/json,text/plain,*/*",
+        "Referer":"https://www.tikwm.com/"
+    })
+    with urllib.request.urlopen(req,timeout=45) as r:
+        return json.loads(r.read().decode("utf-8","replace"))
 
-async def real_tiktok_trend():
-    if not TOKEN:
-        return None
-    from TikTokApi import TikTokApi
-    items = []
-    async with TikTokApi() as api:
-        await api.create_sessions(
-            ms_tokens=[TOKEN],
-            num_sessions=1,
-            sleep_after=4,
-            headless=False,
-            browser="chromium",
-        )
-        async for video in api.trending.videos(count=24):
-            v = video.as_dict
-            stats = v.get("stats") or {}
-            author = v.get("author") or {}
-            vid = str(v.get("id") or "")
-            handle = author.get("uniqueId") or ""
-            desc = clean(v.get("desc") or "")
-            if not vid or not handle:
-                continue
-            items.append({
-                "type": "video",
-                "id": vid,
-                "author": handle,
-                "description": desc,
-                "views": int(stats.get("playCount") or 0),
-                "likes": int(stats.get("diggCount") or 0),
-                "shares": int(stats.get("shareCount") or 0),
-                "source_url": f"https://www.tiktok.com/@{handle}/video/{vid}",
-                "source": "TikTok trending feed",
-            })
-    if not items:
-        return None
-    items.sort(key=lambda x: (x["views"], x["likes"], x["shares"]), reverse=True)
-    return items[0]
+def load_state():
+    if not STATE.exists():
+        return {}
+    try:
+        return json.loads(STATE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
-def creative_center_fallback():
-    proxy = "https://r.jina.ai/" + CREATIVE_URL
-    req = urllib.request.Request(proxy, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=45) as r:
-        body = r.read().decode("utf-8", "replace")
-    tags = re.findall(r"#[A-Za-z0-9_ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+", body)
-    if not tags:
-        raise RuntimeError("Nie udało się pobrać trendu z TikTok Creative Center.")
-    tag = tags[0]
-    return {
-        "type": "hashtag",
-        "description": tag,
-        "views": 0,
-        "likes": 0,
-        "shares": 0,
-        "source_url": CREATIVE_URL,
-        "source": "TikTok Creative Center fallback",
-    }
+def n(v):
+    try:return int(v or 0)
+    except:return 0
 
-def topic_from(trend):
-    text = clean(trend.get("description", ""))
-    text = re.sub(r"#[A-Za-z0-9_ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+", "", text).strip()
-    if not text:
-        text = clean(trend.get("description", "")) or "ten trend"
-    return text[:95]
+def score_video(v, old, now):
+    vid=str(v.get("video_id") or v.get("id") or "")
+    plays=n(v.get("play_count") or v.get("playCount"))
+    likes=n(v.get("digg_count") or v.get("diggCount"))
+    shares=n(v.get("share_count") or v.get("shareCount"))
+    comments=n(v.get("comment_count") or v.get("commentCount"))
+    created=n(v.get("create_time") or v.get("createTime"))
+    prev=(old.get("videos") or {}).get(vid)
+    # Best measure after first hourly scan: actual view growth since last scan.
+    if prev and n(prev.get("play_count")) <= plays:
+        dt=max(900, now-n(prev.get("seen_at")))
+        delta=plays-n(prev.get("play_count"))
+        rate=delta*3600/dt
+        return (2, rate + shares*2 + comments*0.5, delta)
+    # First scan/new video: estimate current velocity from age plus engagement.
+    age_h=max(0.25,(now-created)/3600) if created else 24
+    velocity=plays/age_h
+    engagement=likes*0.08 + shares*0.8 + comments*0.2
+    return (1, velocity+engagement, 0)
 
-def build_script(trend):
-    topic = topic_from(trend)
-    seed = sum(ord(c) for c in topic) % 6
-    animal = "kot" if seed % 2 == 0 else "pies"
-    templates = [
-        f"Właśnie zobaczyłem ten trend: {topic}. Serio? To teraz robi takie wyświetlenia? Dobra, pokaż jeszcze raz.",
-        f"Internet właśnie żyje tym: {topic}. Nie pytaj mnie dlaczego. Ja tylko sprawdzam, co ludzie oglądają.",
-        f"Trend na teraz: {topic}. Okej, rozumiem czemu ludzie to oglądają. Trochę dziwne, ale działa.",
-        f"To jest teraz wszędzie na TikToku: {topic}. Czy tylko ja mam wrażenie, że internet codziennie wymyśla coś nowego?",
-        f"Właśnie sprawdziłem, co teraz rośnie na TikToku. Temat to: {topic}. Ciekawe, czy jutro dalej będzie na topie.",
-        f"Ten trend właśnie mocno idzie: {topic}. Ja bym obejrzał jeszcze raz, tylko żeby zrozumieć, o co wszystkim chodzi.",
-    ]
-    return animal, templates[seed], topic
+def download(url,path):
+    req=urllib.request.Request(url,headers={
+        "User-Agent":"Mozilla/5.0",
+        "Referer":"https://www.tiktok.com/",
+        "Accept":"*/*"
+    })
+    with urllib.request.urlopen(req,timeout=120) as r, open(path,"wb") as f:
+        while True:
+            b=r.read(1024*1024)
+            if not b:break
+            f.write(b)
 
 def main():
-    if os.environ.get("TIKTOK_TEST_MODE") == "1":
-        trend = {
-            "type": "test",
-            "description": "Test: pies komentuje viralowy trend",
-            "views": 0,
-            "likes": 0,
-            "shares": 0,
-            "source_url": "",
-            "source": "TEST — bez pobierania TikToka",
-        }
-    else:
-        if not TOKEN:
-            raise RuntimeError("Brak sekretu TIKTOK_MS_TOKEN — bot nie będzie udawał prawdziwego popularnego filmu.")
-        trend = asyncio.run(real_tiktok_trend())
-        if trend is None:
-            raise RuntimeError("TikTok nie zwrócił żadnego popularnego filmu.")
+    url=FEED+"?"+urllib.parse.urlencode({"region":REGION,"count":COUNT})
+    data=get_json(url)
+    if n(data.get("code")) != 0:
+        raise RuntimeError("TikWM feed error: "+str(data.get("msg")))
+    items=data.get("data") or []
+    if isinstance(items,dict):
+        items=items.get("videos") or items.get("data") or []
+    if not items:
+        raise RuntimeError("Brak popularnych filmów w feedzie TikWM.")
 
-    animal, script, topic = build_script(trend)
-    trend["animal"] = animal
-    trend["topic"] = topic
-    trend["script"] = script
-    trend["generated_at_utc"] = datetime.now(timezone.utc).isoformat()
+    old=load_state()
+    now=int(time.time())
+    ranked=[]
+    for v in items:
+        vid=str(v.get("video_id") or v.get("id") or "")
+        play=v.get("play")
+        if not vid or not play:
+            continue
+        s=score_video(v,old,now)
+        ranked.append((s,v))
+    if not ranked:
+        raise RuntimeError("Feed nie zawiera filmów możliwych do pobrania.")
+    ranked.sort(key=lambda x:x[0],reverse=True)
+    score,best=ranked[0]
 
-    caption = f"{topic} — wersja ze zwierzakiem. #tiktoktrend #viral #ai #{'kot' if animal=='kot' else 'pies'}"
-    (OUT/"narration.txt").write_text(script, encoding="utf-8")
-    (OUT/"caption.txt").write_text(caption[:2200], encoding="utf-8")
-    (OUT/"trend.json").write_text(json.dumps(trend, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(trend, ensure_ascii=False, indent=2))
+    vid=str(best.get("video_id") or best.get("id"))
+    author=best.get("author") or {}
+    handle=author.get("unique_id") or author.get("uniqueId") or ""
+    title=(best.get("title") or best.get("desc") or "").strip()
+    source=f"https://www.tiktok.com/@{handle}/video/{vid}" if handle else f"https://www.tiktok.com/video/{vid}"
 
-if __name__ == "__main__":
+    out={
+        "type":"viral_video",
+        "video_id":vid,
+        "author":handle,
+        "title":title,
+        "source_url":source,
+        "play_count":n(best.get("play_count") or best.get("playCount")),
+        "digg_count":n(best.get("digg_count") or best.get("diggCount")),
+        "share_count":n(best.get("share_count") or best.get("shareCount")),
+        "comment_count":n(best.get("comment_count") or best.get("commentCount")),
+        "create_time":n(best.get("create_time") or best.get("createTime")),
+        "selection_mode":"hourly_delta" if score[0]==2 else "current_velocity_estimate",
+        "hourly_view_delta":score[2],
+        "region":REGION,
+        "selected_at":now
+    }
+    (OUT/"trend.json").write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding="utf-8")
+    caption=(title[:700]+"\n\nAI animal remix • source: "+source+"\n#tiktoktrend #viral #animal #airemix").strip()
+    (OUT/"caption.txt").write_text(caption,encoding="utf-8")
+
+    # save current snapshot for next hourly comparison
+    snap={"seen_at":now,"videos":{}}
+    for v in items:
+        x=str(v.get("video_id") or v.get("id") or "")
+        if x:
+            snap["videos"][x]={
+                "play_count":n(v.get("play_count") or v.get("playCount")),
+                "seen_at":now
+            }
+    STATE.write_text(json.dumps(snap,ensure_ascii=False,indent=2),encoding="utf-8")
+
+    download(best["play"],OUT/"source.mp4")
+    print(json.dumps(out,ensure_ascii=False,indent=2))
+
+if __name__=="__main__":
     main()
