@@ -2,8 +2,6 @@ name: TikTok Animal Viral Remix
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "7 * * * *"
   push:
     branches: [main]
     paths:
@@ -36,10 +34,10 @@ jobs:
           path: ~/.cache/huggingface
           key: whisper-tiny-v1
 
-      - name: Find English viral with a suitable human scene
+      - name: Find English viral and write original reenactment
         run: python tiktok-bot/trend_bot.py
 
-      - name: Create restrained animal-character remix
+      - name: Generate original cinematic AI reenactment
         run: python tiktok-bot/animate.py
 
       - name: Save hourly trend state
@@ -67,5 +65,5 @@ jobs:
           DELTA="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d["hourly_view_delta"])')"
           MODE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d["selection_mode"])')"
           URL="https://github.com/${{ github.repository }}/releases/download/tiktok-latest/tiktok_ready.mp4"
-          printf '@Photofiver\n\n## GOTOWY ANIMAL REMIX\n\nŹródłowy viral: %s\n\nWyświetlenia: %s\nPrzyrost od poprzedniego skanu: %s\nTryb wyboru: %s\n\n**GOTOWY MP4:** %s\n' "$SOURCE" "$VIEWS" "$DELTA" "$MODE" "$URL" > /tmp/comment.md
+          printf '@Photofiver\n\n## GOTOWA ORYGINALNA PRZERÓBKA AI\n\nŹródłowy viral: %s\n\nWyświetlenia: %s\nPrzyrost od poprzedniego skanu: %s\nTryb wyboru: %s\n\n**GOTOWY MP4:** %s\n' "$SOURCE" "$VIEWS" "$DELTA" "$MODE" "$URL" > /tmp/comment.md
           gh issue comment 1 --repo "${{ github.repository }}" --body-file /tmp/comment.md
