@@ -1,10 +1,9 @@
-name: TikTok Animal Trend Bot
+name: TikTok Animal Viral Remix
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "tiktok-bot/.trigger"
 
@@ -15,9 +14,7 @@ permissions:
 jobs:
   make-video:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      TIKTOK_MS_TOKEN: ${{ secrets.TIKTOK_MS_TOKEN }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -28,28 +25,28 @@ jobs:
       - name: Install free tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg xvfb fonts-dejavu-core
+          sudo apt-get install -y -qq ffmpeg
           pip install -r tiktok-bot/requirements.txt
-          python -m playwright install chromium
 
-      - name: Read TikTok trend
-        run: xvfb-run -a python tiktok-bot/trend_bot.py
+      - name: Find current viral TikTok and download it
+        run: python tiktok-bot/trend_bot.py
 
-      - name: Human Polish voice
-        run: |
-          TEXT="$(cat tiktok-bot/output/narration.txt)"
-          edge-tts --voice pl-PL-MarekNeural --text "$TEXT" --write-media tiktok-bot/output/voice.mp3
-          ffmpeg -y -i tiktok-bot/output/voice.mp3 -ar 44100 -ac 1 tiktok-bot/output/voice.wav
-
-      - name: Animate talking animal
+      - name: Recreate it as an animal remix
         run: python tiktok-bot/animate.py
+
+      - name: Save hourly trend state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tiktok-bot/state.json
+          git diff --cached --quiet || (git commit -m "Update TikTok hourly trend state" && git push)
 
       - name: Publish latest video
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view tiktok-latest --repo "${{ github.repository }}" >/dev/null 2>&1 || \
-            gh release create tiktok-latest --repo "${{ github.repository }}" --title "TikTok latest" --notes "Latest ready-to-post original animal trend video"
+            gh release create tiktok-latest --repo "${{ github.repository }}" --title "TikTok latest" --notes "Latest AI animal remix"
           gh release upload tiktok-latest tiktok-bot/output/tiktok_ready.mp4 tiktok-bot/output/caption.txt tiktok-bot/output/trend.json \
             --repo "${{ github.repository }}" --clobber
 
@@ -57,10 +54,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TOPIC="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d.get("topic","trend"))')"
-          TYPE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print("TESTOWY FILM" if d.get("type")=="test" else ("POPULARNY FILM TIKTOK" if d.get("type")=="video" else "TREND TIKTOK"))')"
-          SOURCE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d.get("source_url",""))')"
-          CAPTION="$(cat tiktok-bot/output/caption.txt)"
+          SOURCE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d["source_url"])')"
+          VIEWS="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d["play_count"])')"
+          DELTA="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d["hourly_view_delta"])')"
+          MODE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d["selection_mode"])')"
           URL="https://github.com/${{ github.repository }}/releases/download/tiktok-latest/tiktok_ready.mp4"
-          printf '@Photofiver\n\n## GOTOWY FILM ZE ZWIERZAKIEM\n\n**%s**\n\nTemat: **%s**\n\nOryginalny trend: %s\n\n**GOTOWY MP4:** %s\n\n**Opis:**\n%s\n' "$TYPE" "$TOPIC" "$SOURCE" "$URL" "$CAPTION" > /tmp/comment.md
+          printf '@Photofiver\n\n## GOTOWY ANIMAL REMIX\n\nŹródłowy viral: %s\n\nWyświetlenia: %s\nPrzyrost od poprzedniego skanu: %s\nTryb wyboru: %s\n\n**GOTOWY MP4:** %s\n' "$SOURCE" "$VIEWS" "$DELTA" "$MODE" "$URL" > /tmp/comment.md
           gh issue comment 1 --repo "${{ github.repository }}" --body-file /tmp/comment.md
