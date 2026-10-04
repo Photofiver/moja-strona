@@ -102,14 +102,11 @@ def build_script(trend):
     return animal, line, topic
 
 def main():
-    trend = None
-    if TOKEN:
-        try:
-            trend = asyncio.run(real_tiktok_trend())
-        except Exception as e:
-            print("Real TikTok feed failed:", repr(e))
+    if not TOKEN:
+        raise RuntimeError("Brak sekretu TIKTOK_MS_TOKEN — bot nie będzie udawał prawdziwego popularnego filmu.")
+    trend = asyncio.run(real_tiktok_trend())
     if trend is None:
-        trend = creative_center_fallback()
+        raise RuntimeError("TikTok nie zwrócił żadnego popularnego filmu.")
 
     animal, script, topic = build_script(trend)
     trend["animal"] = animal
