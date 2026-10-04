@@ -1,0 +1,65 @@
+name: TikTok Trend Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 * * * *"
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  make-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install free tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          pip install -r tiktok-bot/requirements.txt
+          python -m playwright install chromium
+
+      - name: Find trend and create frames
+        run: python tiktok-bot/trend_bot.py
+
+      - name: Make Polish AI narration
+        run: |
+          espeak-ng -v pl -s 165 -f tiktok-bot/output/narration.txt -w tiktok-bot/output/voice.wav
+
+      - name: Build vertical MP4
+        run: |
+          ffmpeg -y \
+            -loop 1 -t 4 -i tiktok-bot/output/01.png \
+            -loop 1 -t 4 -i tiktok-bot/output/02.png \
+            -loop 1 -t 4 -i tiktok-bot/output/03.png \
+            -i tiktok-bot/output/voice.wav \
+            -filter_complex "[0:v]fps=30,format=yuv420p[v0];[1:v]fps=30,format=yuv420p[v1];[2:v]fps=30,format=yuv420p[v2];[v0][v1][v2]concat=n=3:v=1:a=0[v]" \
+            -map "[v]" -map 3:a -c:v libx264 -c:a aac -shortest -movflags +faststart tiktok-bot/output/tiktok_ready.mp4
+
+      - name: Publish latest video download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view tiktok-latest --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+            gh release create tiktok-latest --repo "${{ github.repository }}" --title "TikTok latest" --notes "Latest ready-to-post TikTok video"
+          gh release upload tiktok-latest tiktok-bot/output/tiktok_ready.mp4 tiktok-bot/output/caption.txt tiktok-bot/output/trend.json \
+            --repo "${{ github.repository }}" --clobber
+
+      - name: Notify phone
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TREND="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d.get("title","trend"))')"
+          METRIC="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d.get("metric",""))')"
+          CAPTION="$(cat tiktok-bot/output/caption.txt)"
+          URL="https://github.com/${{ github.repository }}/releases/download/tiktok-latest/tiktok_ready.mp4"
+          printf '@Photofiver\n\n## GOTOWY FILM TIKTOK\n\nTrend: **%s**\n\n%s\n\n**Pobierz gotowy film:** %s\n\n**Opis:**\n%s\n' "$TREND" "$METRIC" "$URL" "$CAPTION" > /tmp/comment.md
+          gh issue comment 1 --repo "${{ github.repository }}" --body-file /tmp/comment.md
