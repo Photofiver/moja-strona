@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 15
     env:
       TIKTOK_MS_TOKEN: ${{ secrets.TIKTOK_MS_TOKEN }}
+      TIKTOK_TEST_MODE: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -58,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TOPIC="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d.get("topic","trend"))')"
-          TYPE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print("POPULARNY FILM TIKTOK" if d.get("type")=="video" else "TREND TIKTOK")')"
+          TYPE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print("TESTOWY FILM" if d.get("type")=="test" else ("POPULARNY FILM TIKTOK" if d.get("type")=="video" else "TREND TIKTOK"))')"
           SOURCE="$(python -c 'import json; d=json.load(open("tiktok-bot/output/trend.json")); print(d.get("source_url",""))')"
           CAPTION="$(cat tiktok-bot/output/caption.txt)"
           URL="https://github.com/${{ github.repository }}/releases/download/tiktok-latest/tiktok_ready.mp4"
