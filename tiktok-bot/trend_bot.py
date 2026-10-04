@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, re, textwrap
+import json, os, re, textwrap, urllib.request
 from pathlib import Path
 from datetime import datetime, timezone
 from playwright.sync_api import sync_playwright
@@ -14,52 +14,61 @@ HASHTAG_URL = "https://ads.tiktok.com/creative/creativeCenter/trends?deviceType=
 def clean(s):
     return re.sub(r"\\s+", " ", s or "").strip()
 
-def find_trend(page):
-    # 1) Try the public TikTok Creative Center video trends page.
-    try:
-        page.goto(VIDEO_URL, wait_until="domcontentloaded", timeout=60000)
-        page.wait_for_timeout(9000)
-        body = page.locator("body").inner_text(timeout=15000)
-        lines = [clean(x) for x in body.splitlines() if clean(x)]
-        for i, line in enumerate(lines):
-            if re.match(r"(?i)^video views\\b", line):
-                before = [x for x in lines[max(0, i-8):i] if len(x) > 2]
-                # Remove navigation labels and metric labels.
-                skip = {"video", "hashtag", "creator", "action", "view details", "highest video views",
-                        "highest engagement", "highest 6s views", "please select"}
-                usable = [x for x in before if x.lower() not in skip and not x.lower().startswith("image")]
-                if usable:
-                    title = usable[-2] if len(usable) >= 2 else usable[-1]
-                    creator = usable[-1] if len(usable) >= 2 else ""
-                    return {
-                        "type": "video",
-                        "title": title[:160],
-                        "creator": creator[:80],
-                        "metric": line[:80],
-                        "source": VIDEO_URL,
-                    }
-    except Exception:
-        pass
+def parse_text(body, source):
+    lines = [clean(x).replace("**", "") for x in body.splitlines() if clean(x)]
+    skip = {"video", "hashtag", "creator", "action", "view details", "highest video views",
+            "highest engagement", "highest 6s views", "please select"}
 
-    # 2) Reliable free fallback: UK trending hashtags from the same official public source.
-    page.goto(HASHTAG_URL, wait_until="domcontentloaded", timeout=60000)
-    page.wait_for_timeout(8000)
-    body = page.locator("body").inner_text(timeout=15000)
-    lines = [clean(x) for x in body.splitlines() if clean(x)]
+    # Prefer a visible trending-video card.
     for i, line in enumerate(lines):
-        if re.fullmatch(r"#[^ ]+", line) and len(line) <= 80:
+        if re.match(r"(?i)^video views\\b", line):
+            before = [x for x in lines[max(0, i-10):i] if len(x) > 2]
+            usable = [x for x in before if x.lower() not in skip and not x.lower().startswith("image")]
+            if usable:
+                title = usable[-2] if len(usable) >= 2 else usable[-1]
+                creator = usable[-1] if len(usable) >= 2 else ""
+                return {"type":"video","title":title[:160],"creator":creator[:80],"metric":line[:80],"source":source}
+
+    # Fallback is still TikTok's own UK trend list.
+    for i, line in enumerate(lines):
+        m = re.search(r"(#[A-Za-z0-9_ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)", line)
+        if m:
+            tag = m.group(1)
             metric = ""
-            for x in lines[i+1:i+8]:
-                if "Posts" in x or "Views" in x:
-                    metric = x[:100]
-                    break
-            return {
-                "type": "hashtag",
-                "title": line,
-                "creator": "",
-                "metric": metric,
-                "source": HASHTAG_URL,
-            }
+            near = " ".join(lines[i:i+8])
+            mm = re.search(r"([0-9][0-9.,KMBkmb]*\\s+(?:Posts|Views))", near)
+            if mm:
+                metric = mm.group(1)
+            return {"type":"hashtag","title":tag[:80],"creator":"","metric":metric,"source":source}
+    return None
+
+def jina_read(url):
+    proxy = "https://r.jina.ai/" + url
+    req = urllib.request.Request(proxy, headers={"User-Agent":"Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=45) as r:
+        return r.read().decode("utf-8", "replace")
+
+def find_trend(page):
+    # First use a free text reader for TikTok's public Creative Center pages.
+    for url in (VIDEO_URL, HASHTAG_URL):
+        try:
+            found = parse_text(jina_read(url), url)
+            if found:
+                return found
+        except Exception:
+            pass
+
+    # Browser fallback if the text reader is temporarily unavailable.
+    for url in (VIDEO_URL, HASHTAG_URL):
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(10000)
+            found = parse_text(page.locator("body").inner_text(timeout=15000), url)
+            if found:
+                return found
+        except Exception:
+            pass
+
     raise RuntimeError("TikTok Creative Center did not expose a usable trend.")
 
 def font(size, bold=False):
