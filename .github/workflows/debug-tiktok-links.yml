@@ -1,0 +1,17 @@
+name: Debug TikTok Trend Links
+on:
+  push:
+    branches: [main]
+    paths: ["tiktok-bot/.debug-trigger"]
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install playwright==1.55.0
+          python -m playwright install chromium
+      - run: python tiktok-bot/debug_links.py
