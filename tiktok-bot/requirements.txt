@@ -1,2 +1,4 @@
+TikTokApi
 playwright==1.55.0
 Pillow==11.3.0
+edge-tts
