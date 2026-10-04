@@ -45,14 +45,12 @@ def main():
     except Exception as e:
         raise RuntimeError(f"Nie udało się uruchomić Wan T2V przez {submit}: {e}")
     print("SUBMIT",repr(res))
-    if not isinstance(res,(list,tuple)) or not res:
-        raise RuntimeError("Wan nie zwrócił identyfikatora zadania.")
-    task_id=res[0]
-    status=False
-    for i in range(30):
+    # Gradio keeps task_id/status in hidden session state. Public API returns only
+    # cost/wait estimates, and /status_refresh takes no public parameters.
+    for i in range(36):
         time.sleep(20)
         try:
-            rr=client.predict(task_id,"t2v",status,api_name=refresh)
+            rr=client.predict(api_name=refresh)
         except Exception as e:
             print("refresh error",repr(e))
             continue
