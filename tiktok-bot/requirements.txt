@@ -2,3 +2,4 @@ opencv-python-headless==4.10.0.84
 numpy<2
 faster-whisper==1.1.1
 requests>=2.32
+edge-tts
