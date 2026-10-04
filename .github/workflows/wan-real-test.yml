@@ -1,0 +1,40 @@
+name: Wan Original Video Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tiktok-bot/.wan-trigger"
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  test-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install client
+        run: pip install -q gradio_client requests
+
+      - name: Generate real AI video
+        run: python tiktok-bot/wan_test.py
+
+      - name: Publish test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view tiktok-latest --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+            gh release create tiktok-latest --repo "${{ github.repository }}" --title "TikTok latest" --notes "Latest original AI test"
+          gh release upload tiktok-latest tiktok-bot/output/tiktok_ready.mp4 tiktok-bot/output/caption.txt tiktok-bot/output/trend.json \
+            --repo "${{ github.repository }}" --clobber
+          URL="https://github.com/${{ github.repository }}/releases/download/tiktok-latest/tiktok_ready.mp4"
+          printf '@Photofiver\n\n## TEST PRAWDZIWEGO FILMU AI\n\nBez wklejonego psa, bez małpy, bez oryginalnego obrazu.\n\n**GOTOWY MP4:** %s\n' "$URL" > /tmp/comment.md
+          gh issue comment 1 --repo "${{ github.repository }}" --body-file /tmp/comment.md
