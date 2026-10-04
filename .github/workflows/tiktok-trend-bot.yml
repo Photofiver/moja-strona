@@ -2,6 +2,8 @@ name: TikTok Animal Viral Remix
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "7 * * * *"
   push:
     branches: [main]
     paths:
