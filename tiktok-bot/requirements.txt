@@ -1,4 +1,2 @@
-TikTokApi
-playwright==1.55.0
-Pillow==11.3.0
-edge-tts
+opencv-python-headless==4.10.0.84
+numpy<2
