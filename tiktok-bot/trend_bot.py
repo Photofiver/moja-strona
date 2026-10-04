@@ -84,22 +84,16 @@ def topic_from(trend):
 def build_script(trend):
     topic = topic_from(trend)
     seed = sum(ord(c) for c in topic) % 6
-    animals = ["kot", "pies", "kot", "pies", "kot", "pies"]
-    animal = animals[seed]
-    if animal == "kot":
-        templates = [
-            f"Wszyscy na TikToku gadają teraz o: {topic}. Ja też sprawdziłem. I mam jedno pytanie: gdzie jest moja kolacja?",
-            f"Podobno teraz viralem jest: {topic}. Jako profesjonalny kot potwierdzam: internet znowu zachowuje się dziwnie.",
-            f"Zobaczyłem trend o: {topic}. Ludzie mają miliony wyświetleń, a ja nadal nie mam dostępu do lodówki. Skandal.",
-        ]
-    else:
-        templates = [
-            f"Na TikToku leci teraz: {topic}. Obejrzałem i szczerze? Dałbym temu dziesięć smaczków na dziesięć.",
-            f"Wszyscy oglądają teraz: {topic}. Ja jestem psem i nie rozumiem wszystkiego, ale jeśli jest zabawa, wchodzę.",
-            f"Trend dnia to: {topic}. Sprawdziłem go za was. Werdykt: ciekawe, ale czy ktoś powiedział spacer?",
-        ]
-    line = templates[seed % len(templates)]
-    return animal, line, topic
+    animal = "kot" if seed % 2 == 0 else "pies"
+    templates = [
+        f"Właśnie zobaczyłem ten trend: {topic}. Serio? To teraz robi takie wyświetlenia? Dobra, pokaż jeszcze raz.",
+        f"Internet właśnie żyje tym: {topic}. Nie pytaj mnie dlaczego. Ja tylko sprawdzam, co ludzie oglądają.",
+        f"Trend na teraz: {topic}. Okej, rozumiem czemu ludzie to oglądają. Trochę dziwne, ale działa.",
+        f"To jest teraz wszędzie na TikToku: {topic}. Czy tylko ja mam wrażenie, że internet codziennie wymyśla coś nowego?",
+        f"Właśnie sprawdziłem, co teraz rośnie na TikToku. Temat to: {topic}. Ciekawe, czy jutro dalej będzie na topie.",
+        f"Ten trend właśnie mocno idzie: {topic}. Ja bym obejrzał jeszcze raz, tylko żeby zrozumieć, o co wszystkim chodzi.",
+    ]
+    return animal, templates[seed], topic
 
 def main():
     if os.environ.get("TIKTOK_TEST_MODE") == "1":
