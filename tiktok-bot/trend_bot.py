@@ -8,9 +8,9 @@ OUT=Path("tiktok-bot/output")
 OUT.mkdir(parents=True,exist_ok=True)
 STATE=Path("tiktok-bot/state.json")
 FEED="https://www.tikwm.com/api/feed/list"
-REGION="GB"
-COUNT=30
-MAX_CANDIDATES=10
+REGIONS=["GB","US"]
+COUNT=50
+MAX_CANDIDATES=24
 TMP=OUT/"candidate.mp4"
 WAV=OUT/"candidate.wav"
 
@@ -77,7 +77,7 @@ def face_quality(path):
     if total<=0:
         cap.release(); return 0,0
     cascade=cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
-    hits=0; multi=0; samples=12
+    hits=0; face_total=0; samples=14
     for i in range(samples):
         pos=int((i+1)*total/(samples+1))
         cap.set(cv2.CAP_PROP_POS_FRAMES,pos)
@@ -88,12 +88,13 @@ def face_quality(path):
         if scale<1:
             frame=cv2.resize(frame,None,fx=scale,fy=scale,interpolation=cv2.INTER_AREA)
         gray=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-        faces=cascade.detectMultiScale(gray,scaleFactor=1.10,minNeighbors=5,minSize=(45,45))
-        good=[f for f in faces if (f[2]*f[3]) >= frame.shape[0]*frame.shape[1]*0.008]
-        if good:hits+=1
-        if len(good)>1:multi+=1
+        faces=cascade.detectMultiScale(gray,scaleFactor=1.08,minNeighbors=4,minSize=(38,38))
+        good=[f for f in faces if (f[2]*f[3]) >= frame.shape[0]*frame.shape[1]*0.004]
+        if good:
+            hits+=1
+            face_total+=len(good)
     cap.release()
-    return hits/samples,multi/samples
+    return hits/samples,face_total
 
 def speech_info(path,model):
     subprocess.run([
@@ -117,11 +118,18 @@ def save_state(items,now):
     STATE.write_text(json.dumps(snap,ensure_ascii=False,indent=2),encoding="utf-8")
 
 def main():
-    data=get_json(FEED+"?"+urllib.parse.urlencode({"region":REGION,"count":COUNT}))
-    if n(data.get("code"))!=0:
-        raise RuntimeError("TikWM feed error: "+str(data.get("msg")))
-    items=data.get("data") or []
-    if isinstance(items,dict):items=items.get("videos") or items.get("data") or []
+    items=[]
+    seen_ids=set()
+    for region in REGIONS:
+        data=get_json(FEED+"?"+urllib.parse.urlencode({"region":region,"count":COUNT}))
+        if n(data.get("code"))!=0:
+            continue
+        part=data.get("data") or []
+        if isinstance(part,dict):part=part.get("videos") or part.get("data") or []
+        for v in part:
+            vid=str(v.get("video_id") or v.get("id") or "")
+            if vid and vid not in seen_ids:
+                seen_ids.add(vid); items.append(v)
     if not items:raise RuntimeError("Brak popularnych filmów.")
 
     old=load_state(); now=int(time.time())
@@ -145,28 +153,28 @@ def main():
             rejected.append(["download",str(e)[:80]])
             continue
         dur=duration(TMP)
-        if dur<6 or dur>60:
+        if dur<5 or dur>90:
             rejected.append(["duration",round(dur,1)])
             continue
-        face_ratio,multi_ratio=face_quality(TMP)
-        if face_ratio<0.45 or multi_ratio>0.35:
-            rejected.append(["face",round(face_ratio,2),round(multi_ratio,2)])
+        face_ratio,face_total=face_quality(TMP)
+        if face_ratio<0.20:
+            rejected.append(["face",round(face_ratio,2),face_total])
             continue
         lang,prob,transcript=speech_info(TMP,model)
-        if lang!="en" or prob<0.70 or len(transcript.split())<4:
+        if lang!="en" or prob<0.65 or len(transcript.split())<3:
             rejected.append(["language",lang,round(prob,2)])
             continue
         if BLOCKED.search(transcript):
             rejected.append(["blocked_speech",transcript[:80]])
             continue
-        chosen=(score,v,dur,face_ratio,lang,prob,transcript)
+        chosen=(score,v,dur,face_ratio,face_total,lang,prob,transcript)
         break
 
     save_state(items,now)
     if not chosen:
-        raise RuntimeError("Brak odpowiedniego anglojęzycznego virala z wyraźną jedną osobą; nic nie publikuję.")
+        raise RuntimeError("Brak odpowiedniego anglojęzycznego virala z widoczną osobą; nic nie publikuję.")
 
-    score,best,dur,face_ratio,lang,prob,transcript=chosen
+    score,best,dur,face_ratio,face_total,lang,prob,transcript=chosen
     TMP.replace(OUT/"source.mp4")
     vid=str(best.get("video_id") or best.get("id"))
     author=best.get("author") or {}
@@ -188,10 +196,11 @@ def main():
         "language":lang,
         "language_probability":round(prob,3),
         "face_presence":round(face_ratio,3),
+        "sampled_face_detections":face_total,
         "transcript":transcript,
         "selection_mode":"hourly_delta" if score[0]==2 else "current_velocity_estimate",
         "hourly_view_delta":score[2],
-        "region":REGION,
+        "regions":REGIONS,
         "selected_at":now,
         "rejected_before_selection":rejected
     }
