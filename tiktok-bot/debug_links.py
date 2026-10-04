@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-from playwright.sync_api import sync_playwright
-from urllib.parse import quote
-Q="Peacockpartner"
-URL="https://www.tiktok.com/search/video?q="+quote(Q)
-with sync_playwright() as p:
-    b=p.chromium.launch(headless=True)
-    page=b.new_page(viewport={"width":1440,"height":1200})
-    page.goto(URL,wait_until="domcontentloaded",timeout=60000)
-    page.wait_for_timeout(12000)
-    print("TITLE",page.title())
-    print("URL",page.url)
-    seen=set()
-    for a in page.locator('a[href*="/video/"]').all():
-        try:
-            href=a.get_attribute("href")
-            if href and href not in seen:
-                seen.add(href)
-                print("VIDEO",href)
-        except: pass
-    print("COUNT",len(seen))
-    b.close()
+import asyncio, json
+from TikTokApi import TikTokApi
+
+async def main():
+    out=[]
+    async with TikTokApi() as api:
+        await api.create_sessions(num_sessions=1, sleep_after=3, browser="chromium", headless=True)
+        async for video in api.trending.videos(count=10):
+            d=video.as_dict
+            author=(d.get("author") or {}).get("uniqueId") or ""
+            vid=str(d.get("id") or "")
+            stats=d.get("stats") or {}
+            out.append({
+              "id":vid,
+              "author":author,
+              "desc":d.get("desc",""),
+              "views":stats.get("playCount",0),
+              "likes":stats.get("diggCount",0),
+              "url":f"https://www.tiktok.com/@{author}/video/{vid}" if author and vid else ""
+            })
+    out.sort(key=lambda x:x["views"] or 0, reverse=True)
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+
+asyncio.run(main())
