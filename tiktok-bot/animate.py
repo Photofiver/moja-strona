@@ -22,6 +22,11 @@ def crop_alpha(img):
     if len(xs)==0:return img
     return img[max(0,ys.min()-5):min(img.shape[0],ys.max()+6),max(0,xs.min()-5):min(img.shape[1],xs.max()+6)]
 
+def feather_alpha(fg):
+    out=fg.copy()
+    out[:,:,3]=cv2.GaussianBlur(out[:,:,3],(0,0),1.2)
+    return out
+
 def audio_levels(path,fps,n):
     subprocess.run(["ffmpeg","-y","-i",str(SRC),"-vn","-ac","1","-ar","16000",str(path)],
                    stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=False)
@@ -36,9 +41,8 @@ def audio_levels(path,fps,n):
     return [v/mx for v in vals] if mx else vals
 
 def subtle_jaw(base,amp):
-    # Moves real muzzle pixels only; no drawn mouth, no coloured circle.
-    h,w=base.shape[:2]; y0=int(h*0.63)
-    shift=int(max(0,min(h*0.022,(amp-0.12)*h*0.045)))
+    h,w=base.shape[:2]; y0=int(h*0.64)
+    shift=int(max(0,min(h*0.018,(amp-0.14)*h*0.035)))
     if shift<=1:return base
     out=np.zeros((h+shift,w,4),dtype=np.uint8)
     out[:y0]=base[:y0]
@@ -46,16 +50,10 @@ def subtle_jaw(base,amp):
     out[y0+shift:y0+shift+h-y0]=base[y0:]
     return out
 
-def feather_alpha(fg):
-    a=fg[:,:,3]
-    a=cv2.GaussianBlur(a,(0,0),1.4)
-    fg=fg.copy(); fg[:,:,3]=a
-    return fg
-
 def overlay(frame,fg,bbox):
     x,y,fw,fh=bbox
-    cx=x+fw/2; cy=y+fh*0.47
-    tw=max(10,int(fw*1.95)); th=max(10,int(fh*2.05))
+    cx=x+fw/2; cy=y+fh*0.48
+    tw=max(12,int(fw*1.80)); th=max(12,int(fh*1.88))
     fg=cv2.resize(fg,(tw,th),interpolation=cv2.INTER_AREA)
     x1=int(cx-tw/2); y1=int(cy-th/2); x2=x1+tw; y2=y1+th
     fx1=max(0,-x1); fy1=max(0,-y1); fx2=tw-max(0,x2-frame.shape[1]); fy2=th-max(0,y2-frame.shape[0])
@@ -65,11 +63,33 @@ def overlay(frame,fg,bbox):
     a=crop[:,:,3:4].astype(np.float32)/255.0
     frame[y1:y2,x1:x2]=(crop[:,:,:3]*a+frame[y1:y2,x1:x2]*(1-a)).astype(np.uint8)
 
-def choose_face(faces,last):
-    if not len(faces):return None
-    if last is None:return max(faces,key=lambda b:b[2]*b[3])
-    lx,ly,lw,lh=last; lcx=lx+lw/2; lcy=ly+lh/2
-    return min(faces,key=lambda b:(b[0]+b[2]/2-lcx)**2+(b[1]+b[3]/2-lcy)**2)
+def center(b):
+    x,y,w,h=b
+    return x+w/2,y+h/2
+
+def update_tracks(tracks,detections):
+    unmatched=set(range(len(detections)))
+    for tr in tracks:
+        tx,ty=center(tr["bbox"])
+        best=None; bestd=1e18
+        for j in list(unmatched):
+            dx,dy=center(detections[j])
+            d=(dx-tx)**2+(dy-ty)**2
+            limit=max(tr["bbox"][2],tr["bbox"][3],detections[j][2],detections[j][3])*1.8
+            if d<limit*limit and d<bestd:
+                best=j; bestd=d
+        if best is None:
+            tr["miss"]+=1
+        else:
+            det=detections[best]; unmatched.remove(best)
+            a=0.42
+            tr["bbox"]=tuple(int((1-a)*o+a*n) for o,n in zip(tr["bbox"],det))
+            tr["miss"]=0
+    tracks[:]=[t for t in tracks if t["miss"]<=4]
+    next_id=max([t["id"] for t in tracks],default=-1)+1
+    for j in unmatched:
+        tracks.append({"id":next_id,"bbox":tuple(int(v) for v in detections[j]),"miss":0})
+        next_id+=1
 
 def main():
     cap=cv2.VideoCapture(str(SRC))
@@ -81,34 +101,22 @@ def main():
     dog=feather_alpha(crop_alpha(fetch_rgba(DOG_URL)))
     levels=audio_levels(WAV,fps,n)
     cascade=cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
-
-    last=None; miss=0; i=0
+    tracks=[]; i=0
     while True:
         ok,frame=cap.read()
         if not ok:break
         if scale!=1:frame=cv2.resize(frame,(w,h),interpolation=cv2.INTER_AREA)
         gray=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-        faces=cascade.detectMultiScale(gray,scaleFactor=1.08,minNeighbors=5,minSize=(42,42))
-        chosen=choose_face(faces,last)
-        if chosen is not None:
-            if last is None:last=tuple(int(v) for v in chosen)
-            else:
-                a=0.35
-                last=tuple(int((1-a)*o+a*nw) for o,nw in zip(last,chosen))
-            miss=0
-        else:
-            miss+=1
-            if miss>5:last=None
+        faces=cascade.detectMultiScale(gray,scaleFactor=1.07,minNeighbors=4,minSize=(36,36))
+        good=[tuple(int(v) for v in f) for f in faces if f[2]*f[3] >= w*h*0.003]
+        update_tracks(tracks,good)
 
-        if last is not None:
-            head=subtle_jaw(dog,levels[i] if i<len(levels) else 0)
-            overlay(frame,head,last)
+        head=subtle_jaw(dog,levels[i] if i<len(levels) else 0)
+        for tr in tracks:
+            if tr["miss"]<=2:
+                overlay(frame,head,tr["bbox"])
 
-        # restrained visual treatment; no childish banner or commentary
-        lab=cv2.cvtColor(frame,cv2.COLOR_BGR2LAB)
-        l,a,b=cv2.split(lab)
-        l=cv2.createCLAHE(clipLimit=1.25,tileGridSize=(8,8)).apply(l)
-        frame=cv2.cvtColor(cv2.merge((l,a,b)),cv2.COLOR_LAB2BGR)
+        # Keep the original scene/dialogue; only the human faces become the animal characters.
         cv2.putText(frame,"AI REMIX",(w-92,h-14),cv2.FONT_HERSHEY_SIMPLEX,0.42,(235,235,235),1,cv2.LINE_AA)
         writer.write(frame); i+=1
 
