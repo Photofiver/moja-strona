@@ -1,0 +1,33 @@
+name: Reefer Madness BEEP probe
+
+on:
+  push:
+    paths:
+      - ".github/workflows/reefer_beep_probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install 'av==16.0.1' faster-whisper
+
+      - name: Find source and transcribe target area
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          ident="reefer_madness1938"
+          with urllib.request.urlopen("https://archive.org/metadata/"+ident,timeout=60) as r:
+              data=json.load(r)
+          for f in data.get("files",[]):
+              n=f.get("name","")
+              if n.lower().endswith((".mp4",".ogv",".webm",".mpeg",".mpg")):
+                  print("FILE",n,"|",f.get("size",""),"|",f.get("length",""),flush=True)
+          PY
