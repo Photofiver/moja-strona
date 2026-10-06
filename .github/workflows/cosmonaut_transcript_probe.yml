@@ -1,0 +1,38 @@
+name: Cosmonaut transcript probe
+
+on:
+  push:
+    paths:
+      - ".github/workflows/cosmonaut_transcript_probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install faster-whisper
+
+      - name: Download source take
+        run: |
+          curl -L --fail --retry 3             "https://archive.org/download/thecosmonaut-s125/01107_BO6J1610.mp4"             -o source.mp4
+          ffprobe -v error -show_streams -show_format source.mp4
+
+      - name: Transcribe with word timestamps
+        run: |
+          python - <<'PY'
+          from faster_whisper import WhisperModel
+          model=WhisperModel("tiny.en", device="cpu", compute_type="int8")
+          segs, info=model.transcribe("source.mp4", beam_size=5, vad_filter=True, word_timestamps=True, language="en")
+          for s in segs:
+              print(f"SEG {s.start:.2f}-{s.end:.2f}: {s.text}")
+              if s.words:
+                  for w in s.words:
+                      print(f"WORD {w.start:.2f}-{w.end:.2f} {w.word}")
+          PY
