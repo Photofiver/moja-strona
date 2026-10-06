@@ -1,0 +1,54 @@
+name: Cosmonaut S99 scan
+
+on:
+  push:
+    paths:
+      - ".github/workflows/cosmonaut_s99_scan.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install 'av==16.0.1' faster-whisper
+
+      - name: Scan takes
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          from faster_whisper import WhisperModel
+          ident="thecosmonaut-s099"
+          with urllib.request.urlopen("https://archive.org/metadata/"+ident,timeout=60) as r:
+              data=json.load(r)
+          files=[]
+          for f in data.get("files",[]):
+              n=f.get("name","")
+              if n.lower().endswith(".mp4") and not n.endswith("_ia.mp4"):
+                  try: dur=float(f.get("length") or 0)
+                  except: dur=0
+                  if dur>=10:
+                      files.append((n,dur))
+          print("FILES",files,flush=True)
+          model=WhisperModel("tiny.en",device="cpu",compute_type="int8")
+          base="https://archive.org/download/"+ident+"/"
+          for n,dur in files:
+              try:
+                  print("\n###",n,dur,flush=True)
+                  urllib.request.urlretrieve(base+urllib.parse.quote(n), "take.mp4")
+              except Exception as e:
+                  print("DOWNLOAD_ERR",e,flush=True)
+                  continue
+              segs,_=model.transcribe("take.mp4",beam_size=3,vad_filter=True,language="en")
+              for s in segs:
+                  t=s.text.strip()
+                  if t:
+                      print(f"{s.start:.2f}-{s.end:.2f}: {t}",flush=True)
+              os.remove("take.mp4")
+          PY
