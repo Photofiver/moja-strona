@@ -19,34 +19,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install 'av==16.0.1' faster-whisper
 
-      - name: Scan S125 takes for dialogue
+      - name: Download source take
+        run: |
+          curl -L --fail --retry 3             "https://archive.org/download/thecosmonaut-s125/01106_BO6J1609.mp4"             -o source.mp4
+
+      - name: Transcribe exact word times
         run: |
           python - <<'PY'
-          import os, urllib.request
           from faster_whisper import WhisperModel
-
-          files = [
-            "01106_BO6J1609.mp4",
-            "01107_BO6J1610.mp4",
-            "01109_BO6J1612.mp4",
-            "01111_BO6J1614.mp4",
-            "01112_MVI_1600.mp4",
-            "01113_MVI_1601.mp4",
-            "01114_MVI_1602.mp4",
-            "01115_MVI_1603.mp4",
-          ]
-          model=WhisperModel("tiny.en", device="cpu", compute_type="int8")
-          base="https://archive.org/download/thecosmonaut-s125/"
-          for name in files:
-              print("\n###",name,flush=True)
-              urllib.request.urlretrieve(base+name, name)
-              segs, info=model.transcribe(name, beam_size=3, vad_filter=True, word_timestamps=True, language="en")
-              total=0
-              for s in segs:
-                  txt=s.text.strip()
-                  if txt:
-                      print(f"{s.start:.2f}-{s.end:.2f}: {txt}",flush=True)
-                      total += len(txt.split())
-              print("WORDS",total,flush=True)
-              os.remove(name)
+          model=WhisperModel("small.en", device="cpu", compute_type="int8")
+          segs, info=model.transcribe("source.mp4", beam_size=5, vad_filter=True, word_timestamps=True, language="en")
+          for s in segs:
+              print(f"SEG {s.start:.2f}-{s.end:.2f}: {s.text}", flush=True)
+              if s.words:
+                  for w in s.words:
+                      print(f"WORD {w.start:.2f}-{w.end:.2f} {w.word}", flush=True)
           PY
