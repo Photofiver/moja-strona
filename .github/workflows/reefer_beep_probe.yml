@@ -12,31 +12,16 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Find subtitle files and target phrase
+      - name: Find target subtitle lines
         run: |
           python - <<'PY'
-          import json, urllib.request, urllib.parse, re
-          ident="reefer_madness1938"
-          with urllib.request.urlopen("https://archive.org/metadata/"+ident,timeout=60) as r:
-              data=json.load(r)
-          subs=[]
-          for f in data.get("files",[]):
-              n=f.get("name","")
-              if n.lower().endswith((".srt",".vtt",".txt")):
-                  subs.append(n)
-                  print("SUB",n,flush=True)
-          base="https://archive.org/download/"+ident+"/"
-          for n in subs:
-              if not n.lower().endswith((".srt",".vtt")):
-                  continue
-              try:
-                  txt=urllib.request.urlopen(base+urllib.parse.quote(n),timeout=30).read().decode("utf-8","replace")
-              except Exception:
-                  continue
-              low=txt.lower()
-              for phrase in ["bring me some reefers","give me the creeps","button up your lips","stop that racket"]:
-                  i=low.find(phrase)
-                  if i>=0:
-                      print("\nMATCH",n,phrase,flush=True)
-                      print(txt[max(0,i-600):i+1000],flush=True)
+          import urllib.request,re
+          url="https://archive.org/download/reefer_madness1938/reefer_madness1938.asr.srt"
+          txt=urllib.request.urlopen(url,timeout=30).read().decode("utf-8","replace")
+          blocks=re.split(r"\n\s*\n",txt)
+          keys=["reef","creep","racket","lips","hang him","what do you want","stop it","squawk"]
+          for b in blocks:
+              lb=b.lower()
+              if any(k in lb for k in keys):
+                  print("\n---\n"+b,flush=True)
           PY
