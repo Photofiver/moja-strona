@@ -1,0 +1,26 @@
+name: Cosmonaut S99 files
+
+on:
+  push:
+    paths:
+      - ".github/workflows/cosmonaut_s99_files.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List S99 files
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          ident="thecosmonaut-s099"
+          with urllib.request.urlopen("https://archive.org/metadata/"+ident,timeout=60) as r:
+              data=json.load(r)
+          for f in data.get("files",[]):
+              n=f.get("name","")
+              if n.lower().endswith(".mp4"):
+                  print(n,"|",f.get("length",""),"|",f.get("size",""))
+          PY
