@@ -12,28 +12,19 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect candidate Cosmonaut clips
+      - name: Read scene scripts
         run: |
           python - <<'PY'
-          import json, urllib.request
-          ids = [
-            "thecosmonaut-tmthemessages001",
-            "thecosmonaut-tmradiohooliganss001",
-            "thecosmonaut-tmsmallaccidents001",
-            "thecosmonaut-tmspacechesss001",
-            "thecosmonaut-tmtherituals003",
-            "thecosmonaut-s045"
-          ]
-          for ident in ids:
-              print("\n###", ident)
-              with urllib.request.urlopen("https://archive.org/metadata/"+ident, timeout=60) as r:
-                  data=json.load(r)
-              md=data.get("metadata",{})
-              print("TITLE", md.get("title"))
-              print("DESC", str(md.get("description",""))[:1500].replace("\n"," "))
-              for f in data.get("files",[]):
-                  name=f.get("name","")
-                  low=name.lower()
-                  if low.endswith((".mp4",".webm",".mov",".mkv",".srt",".vtt",".txt")):
-                      print("FILE", name, "SIZE", f.get("size",""), "FORMAT", f.get("format",""), "LENGTH", f.get("length",""))
+          import urllib.request
+          ids = ["s045","s034","s035","s038","s044","s049","s050","s052","s053","s055","s057","s059","s061","s063","s064","s065","s067","s070","s072","s073","s076","s078","s080","s083","s085","s087","s088","s089","s090","s093","s095","s096","s097","s098","s099","s102","s103-105","s104","s107","s108","s111","s112","s113-s114","s115","s117","s118","s122","s124","s125","s129","s130","s131"]
+          for s in ids:
+              ident="thecosmonaut-"+s
+              url=f"https://archive.org/download/{ident}/{s}_djvu.txt"
+              try:
+                  text=urllib.request.urlopen(url,timeout=20).read().decode("utf-8","replace").strip()
+              except Exception:
+                  continue
+              if text:
+                  print("\n###",s)
+                  print(text[:4000].replace("\r",""))
           PY
