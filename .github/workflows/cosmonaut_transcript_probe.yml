@@ -17,7 +17,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
-          pip install faster-whisper
+          pip install 'av==16.0.1' faster-whisper
 
       - name: Download source take
         run: |
