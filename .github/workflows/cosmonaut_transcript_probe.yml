@@ -29,7 +29,7 @@ jobs:
           python - <<'PY'
           from faster_whisper import WhisperModel
           model=WhisperModel("tiny.en", device="cpu", compute_type="int8")
-          segs, info=model.transcribe("source.mp4", beam_size=5, vad_filter=True, word_timestamps=True, language="en")
+          segs, info=model.transcribe("source.wav", beam_size=5, vad_filter=True, word_timestamps=True, language="en")
           for s in segs:
               print(f"SEG {s.start:.2f}-{s.end:.2f}: {s.text}")
               if s.words:
