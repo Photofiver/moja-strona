@@ -1,0 +1,36 @@
+name: Cosmonaut S99 target
+
+on:
+  push:
+    paths:
+      - ".github/workflows/cosmonaut_s99_target.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  target:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install 'av==16.0.1' faster-whisper
+
+      - name: Transcribe likely full take
+        run: |
+          curl -L --fail --retry 3             "https://archive.org/download/thecosmonaut-s099/01043_s99-1_MVI_0850.mp4"             -o take.mp4
+          python - <<'PY'
+          from faster_whisper import WhisperModel
+          model=WhisperModel("small.en",device="cpu",compute_type="int8")
+          segs,_=model.transcribe("take.mp4",beam_size=5,vad_filter=True,word_timestamps=True,language="en")
+          for s in segs:
+              t=s.text.strip()
+              if t:
+                  print(f"SEG {s.start:.2f}-{s.end:.2f}: {t}",flush=True)
+                  if s.words:
+                      for w in s.words:
+                          print(f"WORD {w.start:.2f}-{w.end:.2f} {w.word}",flush=True)
+          PY
