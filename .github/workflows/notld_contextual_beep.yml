@@ -17,9 +17,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Build TikTok edit from public-domain film
+      - name: Extract famous public-domain scene
         run: |
-          ffmpeg -y -ss 00:06:10.20             -i "https://archive.org/download/night-of-the-living-dead-1968_202401/Night%20of%20the%20Living%20Dead%20%281968%29.webm"             -t 9.2             -f lavfi -t 9.2 -i "sine=frequency=1000:sample_rate=48000"             -filter_complex "[0:v]split=2[bg][fg];[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=18:2[bg2];[fg]scale=1080:-2[fg2];[bg2][fg2]overlay=(W-w)/2:(H-h)/2,drawtext=text='NIGHT OF THE LIVING DEAD (1968)':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=90:box=1:boxcolor=black@0.52:boxborderw=15,drawtext=text='He actually said: GET YOU':fontcolor=white:fontsize=34:x=(w-text_w)/2:y=h-120:box=1:boxcolor=black@0.58:boxborderw=12:enable='gte(t,7.3)'[v];[0:a]atrim=start=0:end=9.2,asetpts=PTS-STARTPTS,aresample=48000,volume='if(between(t,1.90,2.66),0,1)':eval=frame[a0];[1:a]volume='if(between(t,1.90,2.66),0.55,0)':eval=frame[beep];[a0][beep]amix=inputs=2:duration=first:normalize=0[a]"             -map "[v]" -map "[a]"             -c:v libx264 -preset medium -crf 21 -pix_fmt yuv420p             -c:a aac -b:a 192k -movflags +faststart             night_of_the_living_dead_beep.mp4
+          ffmpeg -y -ss 00:06:08             -i "https://archive.org/download/night-of-the-living-dead-1968_202401/Night%20of%20the%20Living%20Dead%20%281968%29.webm"             -t 18             -vf "scale=640:-2"             -c:v libx264 -preset ultrafast -crf 25             -c:a aac -b:a 128k scene.mp4
+
+      - name: Build contextual BEEP edit
+        run: |
+          ffmpeg -y -ss 2.20 -t 9.20 -i scene.mp4             -f lavfi -t 9.20 -i "sine=frequency=1000:sample_rate=48000"             -filter_complex "[0:v]split=2[bg][fg];[bg]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=14:2[bg2];[fg]scale=720:-2[fg2];[bg2][fg2]overlay=(W-w)/2:(H-h)/2,drawtext=text='NIGHT OF THE LIVING DEAD (1968)':fontcolor=white:fontsize=32:x=(w-text_w)/2:y=70:box=1:boxcolor=black@0.52:boxborderw=12,drawtext=text='He actually said: GET YOU':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=h-95:box=1:boxcolor=black@0.58:boxborderw=10:enable='gte(t,7.3)'[v];[0:a]aresample=48000,volume='if(between(t,1.90,2.66),0,1)':eval=frame[a0];[1:a]volume='if(between(t,1.90,2.66),0.55,0)':eval=frame[beep];[a0][beep]amix=inputs=2:duration=first:normalize=0[a]"             -map "[v]" -map "[a]"             -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p             -c:a aac -b:a 160k -movflags +faststart             night_of_the_living_dead_beep.mp4
 
       - name: Upload finished MP4
         uses: actions/upload-artifact@v4
