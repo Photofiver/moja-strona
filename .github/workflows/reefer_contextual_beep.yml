@@ -1,0 +1,33 @@
+name: Reefer Madness contextual BEEP
+
+on:
+  push:
+    paths:
+      - ".github/workflows/reefer_contextual_beep.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Extract source scene
+        run: |
+          ffmpeg -y -ss 00:08:24.70             -i "https://archive.org/download/reefer_madness1938/reefer_madness1938_512kb.mp4"             -t 9.2             -c:v libx264 -preset ultrafast -crf 25             -c:a aac -b:a 128k scene.mp4
+
+      - name: Build contextual BEEP edit
+        run: |
+          ffmpeg -y -i scene.mp4             -f lavfi -t 9.2 -i "sine=frequency=1000:sample_rate=48000"             -filter_complex "[0:v]split=2[bg][fg];[bg]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=14:2[bg2];[fg]scale=720:-2[fg2];[bg2][fg2]overlay=(W-w)/2:(H-h)/2,drawtext=text='REEFER MADNESS (1936)':fontcolor=white:fontsize=34:x=(w-text_w)/2:y=70:box=1:boxcolor=black@0.52:boxborderw=12,drawtext=text='ORIGINAL WORD: LIP':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=h-95:box=1:boxcolor=black@0.58:boxborderw=10:enable='gte(t,7.3)'[v];[0:a]aresample=48000,volume='if(between(t,5.00,5.26),0,1)':eval=frame[a0];[1:a]volume='if(between(t,5.00,5.26),0.55,0)':eval=frame[beep];[a0][beep]amix=inputs=2:duration=first:normalize=0[a]"             -map "[v]" -map "[a]"             -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p             -c:a aac -b:a 160k -movflags +faststart             reefer_madness_contextual_beep.mp4
+
+      - name: Upload finished MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: reefer-madness-contextual-beep
+          path: reefer_madness_contextual_beep.mp4
+          retention-days: 7
