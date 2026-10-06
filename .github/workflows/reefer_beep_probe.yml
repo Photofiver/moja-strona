@@ -12,22 +12,31 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Install
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          python -m pip install --upgrade pip
-          pip install 'av==16.0.1' faster-whisper
-
-      - name: Find source and transcribe target area
+      - name: Find subtitle files and target phrase
         run: |
           python - <<'PY'
-          import json, urllib.request
+          import json, urllib.request, urllib.parse, re
           ident="reefer_madness1938"
           with urllib.request.urlopen("https://archive.org/metadata/"+ident,timeout=60) as r:
               data=json.load(r)
+          subs=[]
           for f in data.get("files",[]):
               n=f.get("name","")
-              if n.lower().endswith((".mp4",".ogv",".webm",".mpeg",".mpg")):
-                  print("FILE",n,"|",f.get("size",""),"|",f.get("length",""),flush=True)
+              if n.lower().endswith((".srt",".vtt",".txt")):
+                  subs.append(n)
+                  print("SUB",n,flush=True)
+          base="https://archive.org/download/"+ident+"/"
+          for n in subs:
+              if not n.lower().endswith((".srt",".vtt")):
+                  continue
+              try:
+                  txt=urllib.request.urlopen(base+urllib.parse.quote(n),timeout=30).read().decode("utf-8","replace")
+              except Exception:
+                  continue
+              low=txt.lower()
+              for phrase in ["bring me some reefers","give me the creeps","button up your lips","stop that racket"]:
+                  i=low.find(phrase)
+                  if i>=0:
+                      print("\nMATCH",n,phrase,flush=True)
+                      print(txt[max(0,i-600):i+1000],flush=True)
           PY
