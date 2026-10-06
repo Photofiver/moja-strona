@@ -12,20 +12,16 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe Internet Archive collection
+      - name: List Internet Archive Cosmonaut items
         run: |
           python - <<'PY'
-          import json, urllib.request
-          url = "https://archive.org/metadata/thecosmonaut"
+          import json, urllib.parse, urllib.request
+          q = urllib.parse.quote("collection:thecosmonaut")
+          url = "https://archive.org/advancedsearch.php?q="+q+"&fl[]=identifier&fl[]=title&fl[]=mediatype&rows=500&page=1&output=json"
           with urllib.request.urlopen(url, timeout=60) as r:
               data = json.load(r)
-          files = data.get("files", [])
-          wanted = []
-          for f in files:
-              name = f.get("name", "")
-              low = name.lower()
-              if low.endswith((".mp4",".mov",".mkv",".webm",".srt",".vtt",".txt",".pdf")):
-                  wanted.append((name, f.get("size",""), f.get("format","")))
-          for row in wanted[:1000]:
-              print("\t".join(map(str,row)))
+          docs = data.get("response",{}).get("docs",[])
+          print("COUNT", len(docs))
+          for d in docs:
+              print(d.get("identifier",""), "\t", d.get("title",""), "\t", d.get("mediatype",""))
           PY
