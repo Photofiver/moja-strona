@@ -12,19 +12,16 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Read scene scripts
+      - name: Inspect S125 files
         run: |
           python - <<'PY'
-          import urllib.request
-          ids = ["s045","s034","s035","s038","s044","s049","s050","s052","s053","s055","s057","s059","s061","s063","s064","s065","s067","s070","s072","s073","s076","s078","s080","s083","s085","s087","s088","s089","s090","s093","s095","s096","s097","s098","s099","s102","s103-105","s104","s107","s108","s111","s112","s113-s114","s115","s117","s118","s122","s124","s125","s129","s130","s131"]
-          for s in ids:
-              ident="thecosmonaut-"+s
-              url=f"https://archive.org/download/{ident}/{s}_djvu.txt"
-              try:
-                  text=urllib.request.urlopen(url,timeout=20).read().decode("utf-8","replace").strip()
-              except Exception:
-                  continue
-              if text:
-                  print("\n###",s)
-                  print(text[:4000].replace("\r",""))
+          import json, urllib.request
+          ident="thecosmonaut-s125"
+          with urllib.request.urlopen("https://archive.org/metadata/"+ident,timeout=60) as r:
+              data=json.load(r)
+          print("TITLE",data.get("metadata",{}).get("title"))
+          for f in data.get("files",[]):
+              name=f.get("name","")
+              if name.lower().endswith((".mp4",".mov",".wav",".xml",".txt")):
+                  print(name,"|",f.get("size",""),"|",f.get("format",""),"|",f.get("length",""))
           PY
