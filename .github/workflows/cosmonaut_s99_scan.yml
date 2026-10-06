@@ -22,7 +22,7 @@ jobs:
       - name: Scan takes
         run: |
           python - <<'PY'
-          import json, os, urllib.request
+          import json, os, urllib.request, urllib.parse
           from faster_whisper import WhisperModel
           ident="thecosmonaut-s099"
           with urllib.request.urlopen("https://archive.org/metadata/"+ident,timeout=60) as r:
