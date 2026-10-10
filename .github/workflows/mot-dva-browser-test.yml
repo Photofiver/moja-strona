@@ -1,0 +1,33 @@
+name: MOT DVA browser test (isolated)
+on:
+  push:
+    branches: [mot-availability-probe-20261010]
+    paths: [.github/workflows/mot-dva-browser-test.yml]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Test booking calendar using standard browser (no bypass)
+        run: |
+          python3 -m pip install --quiet --break-system-packages selenium
+          python3 - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          opt=Options()
+          opt.add_argument("--headless=new")
+          opt.add_argument("--no-sandbox")
+          opt.add_argument("--disable-dev-shm-usage")
+          for url in ("https://www.nidirect.gov.uk/services/book-your-mot-vehicle-test-online","https://dva-bookings.nidirect.gov.uk/"):
+              try:
+                  with webdriver.Chrome(options=opt) as driver:
+                      driver.set_page_load_timeout(35)
+                      driver.get(url)
+                      title=driver.title
+                      body=driver.find_element("tag name","body").text[:250]
+                      print("URL",url,"TITLE",repr(title),"BODY",repr(body))
+                      print("BLOCKED", "request rejected" in (title+" "+body).lower())
+              except Exception as e:
+                  print("ERROR",url,type(e).__name__,str(e)[:400])
+          PY
